@@ -1,5 +1,6 @@
 package rose.runeheart
 
+import rose.runeheart.blockentity.ExampleBlockEntity.RelativeBlockEntity
 import java.nio.file.Files
 
 object Native {
@@ -17,4 +18,5 @@ object Native {
     }
 
     @JvmStatic external fun hello(input: String): String
+    @JvmStatic external fun tick(blockEntities: List<RelativeBlockEntity>)
 }
