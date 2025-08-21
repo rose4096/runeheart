@@ -1,0 +1,7 @@
+{
+  "variants": {
+    "": {
+      "model": "runeheart:block/example_block"
+    }
+  }
+}
