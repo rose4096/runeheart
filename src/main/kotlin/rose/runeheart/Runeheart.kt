@@ -17,6 +17,7 @@ import org.apache.logging.log4j.Level
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import rose.runeheart.blockentity.ModBlockEntity
+import rose.runeheart.menu.ModMenu
 import thedarkcolour.kotlinforforge.neoforge.forge.MOD_BUS
 import thedarkcolour.kotlinforforge.neoforge.forge.runForDist
 
@@ -43,6 +44,7 @@ object Runeheart {
         ModBlocks.REGISTRY.register(MOD_BUS)
         ModItems.REGISTRY.register(MOD_BUS)
         ModBlockEntity.REGISTRY.register(MOD_BUS)
+        ModMenu.REGISTRY.register(MOD_BUS)
         CREATIVE_MODE_TABS.register(MOD_BUS)
 
         runForDist(clientTarget = {

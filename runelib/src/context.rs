@@ -2,14 +2,15 @@ use crate::context::RuneheartError::{
     EmptyScript, RuneAllocError, RuneBuildError, RuneContextError,
     RuneDiagnosticError, RuneEmitError,
 };
+use crate::context::RuneheartExecutionError::RuneVmError;
 use jni::sys::jlong;
 use rune::diagnostics::EmitError;
-use rune::runtime::{RuntimeContext, VmError};
-use rune::termcolor::{Buffer, BufferWriter, ColorChoice, StandardStream};
+use rune::runtime::VmError;
+use rune::termcolor::Buffer;
 use rune::{BuildError, Context, ContextError, Diagnostics, Source, Sources, Vm};
 use std::sync::Arc;
-use crate::context::RuneheartExecutionError::RuneVmError;
 
+#[allow(dead_code)]
 #[derive(Debug)]
 pub enum RuneheartError {
     EmptyScript,
@@ -21,6 +22,7 @@ pub enum RuneheartError {
 }
 
 #[derive(Debug)]
+#[allow(dead_code)]
 pub enum RuneheartExecutionError {
     RuneVmError(VmError),
 }

@@ -31,7 +31,7 @@ object Native {
     external fun tick(context: NativeContextHandle)
 }
 
-class ScriptContext(script: String) : AutoCloseable {
+class ScriptContext(val script: String) : AutoCloseable {
     var handle: NativeContextHandle = 0;
 
     init {
