@@ -1,7 +1,11 @@
 package rose.runeheart
 
+import org.apache.logging.log4j.core.Logger
+import rose.runeheart.Runeheart.LOGGER
 import rose.runeheart.blockentity.ExampleBlockEntity.RelativeBlockEntity
 import java.nio.file.Files
+
+typealias NativeContextHandle = Long;
 
 object Native {
     init {
@@ -17,6 +21,31 @@ object Native {
         System.load(file.absolutePath)
     }
 
-    @JvmStatic external fun hello(input: String): String
-    @JvmStatic external fun tick(blockEntities: List<RelativeBlockEntity>)
+    @JvmStatic
+    external fun createContext(name: String, script: String): NativeContextHandle
+
+    @JvmStatic
+    external fun deleteContext(context: NativeContextHandle)
+
+    @JvmStatic
+    external fun tick(context: NativeContextHandle)
+}
+
+class ScriptContext(name: String, script: String) : AutoCloseable {
+    var handle: NativeContextHandle = 0;
+
+    init {
+        handle = try {
+            Native.createContext(name, script)
+        } catch (e: RuntimeException) {
+            LOGGER.error(e.message)
+            0L
+        }
+    }
+
+    override fun close() {
+        if (handle != 0L) {
+            Native.deleteContext(handle);
+        }
+    }
 }

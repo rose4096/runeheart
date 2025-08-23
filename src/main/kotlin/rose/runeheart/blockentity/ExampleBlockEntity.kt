@@ -30,8 +30,6 @@ class ExampleBlockEntity(pos: BlockPos, state: BlockState) :
                 ) !== null
             }
 
-
-            Native.tick(itemHandlers);
         }
     }
 }

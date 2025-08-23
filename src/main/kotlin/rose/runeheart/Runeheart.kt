@@ -39,8 +39,6 @@ object Runeheart {
 
     init {
         LOGGER.log(Level.INFO, "Hello world!")
-        val test = Native.hello("world");
-        LOGGER.log(Level.INFO, "JNI TEST $test")
 
         ModBlocks.REGISTRY.register(MOD_BUS)
         ModItems.REGISTRY.register(MOD_BUS)
@@ -57,6 +55,16 @@ object Runeheart {
 
     private fun onClientSetup(event: FMLClientSetupEvent) {
         LOGGER.log(Level.INFO, "Initializing client...")
+
+        ScriptContext(
+            "rune", """
+        pub fn main(number) {
+            number + 10
+        }
+        """
+        ).use {
+            Native.tick(it.handle);
+        }
     }
 
     private fun onServerSetup(event: FMLDedicatedServerSetupEvent) {
