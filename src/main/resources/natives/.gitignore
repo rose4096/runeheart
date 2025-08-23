@@ -1,0 +1,4 @@
+# i want to keep the natives folder present without actually uploading binaries to the repo
+
+*
+!.gitignore
