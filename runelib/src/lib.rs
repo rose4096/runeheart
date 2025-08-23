@@ -1,6 +1,6 @@
 mod context;
 
-use crate::context::{RuneheartContext, RuneheartResult};
+use crate::context::{RuneheartContext, RuneheartExecutionResult, RuneheartResult};
 use jni::JNIEnv;
 use jni::objects::{AutoLocal, JClass, JObject, JObjectArray, JString, JValue};
 use jni::strings::JavaStr;
@@ -44,14 +44,12 @@ use std::sync::{Arc, LazyLock, Mutex};
 pub extern "system" fn Java_rose_runeheart_Native_createContext<'local>(
     mut env: JNIEnv<'local>,
     class: JClass<'local>,
-    name: JString<'local>,
     script: JString<'local>,
 ) -> jlong {
-    let name = env.get_string(&name);
     let script = env.get_string(&script);
-    match (name, script) {
-        (Ok(name), Ok(script)) => {
-            let context = RuneheartContext::new(name.into(), script.into());
+    match script {
+        Ok(script) => {
+            let context = RuneheartContext::new(script.into());
             match context {
                 Ok(context) => {
                     let context = Box::new(context);
@@ -83,10 +81,15 @@ pub extern "system" fn Java_rose_runeheart_Native_tick<'local>(
     class: JClass<'local>,
     context: jlong,
 ) {
-    let context = RuneheartContext::from_handle(context);
-    println!("{:#X?}", context.name);
+    let context: &mut RuneheartContext = RuneheartContext::from_handle_mut(context);
+    match context.callback_tick() {
+        Err(err) => {
+            env.throw_new("java/lang/RuntimeException", format!("{:?}", err))
+                .expect("failed to throw runtime exception?");
+        }
+        _ => {}
+    }
 }
-
 
 // #[unsafe(no_mangle)]
 // pub extern "system" fn Java_rose_runeheart_Native_runScript<'local>(

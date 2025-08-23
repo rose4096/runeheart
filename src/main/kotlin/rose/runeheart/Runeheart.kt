@@ -56,15 +56,15 @@ object Runeheart {
     private fun onClientSetup(event: FMLClientSetupEvent) {
         LOGGER.log(Level.INFO, "Initializing client...")
 
-        ScriptContext(
-            "rune", """
-        pub fn main(number) {
-            number + 10
-        }
-        """
-        ).use {
-            Native.tick(it.handle);
-        }
+//        ScriptContext(
+//            """
+//        pub fn tick() {
+//            println!("hello from tick!");
+//        }
+//        """
+//        ).use {
+//            Native.tick(it.handle);
+//        }
     }
 
     private fun onServerSetup(event: FMLDedicatedServerSetupEvent) {

@@ -22,7 +22,7 @@ object Native {
     }
 
     @JvmStatic
-    external fun createContext(name: String, script: String): NativeContextHandle
+    external fun createContext(script: String): NativeContextHandle
 
     @JvmStatic
     external fun deleteContext(context: NativeContextHandle)
@@ -31,12 +31,12 @@ object Native {
     external fun tick(context: NativeContextHandle)
 }
 
-class ScriptContext(name: String, script: String) : AutoCloseable {
+class ScriptContext(script: String) : AutoCloseable {
     var handle: NativeContextHandle = 0;
 
     init {
         handle = try {
-            Native.createContext(name, script)
+            Native.createContext(script)
         } catch (e: RuntimeException) {
             LOGGER.error(e.message)
             0L

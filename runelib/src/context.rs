@@ -1,17 +1,17 @@
 use crate::context::RuneheartError::{
-    EmptyScript, InvalidName, RuneAllocError, RuneBuildError, RuneContextError,
+    EmptyScript, RuneAllocError, RuneBuildError, RuneContextError,
     RuneDiagnosticError, RuneEmitError,
 };
 use jni::sys::jlong;
 use rune::diagnostics::EmitError;
-use rune::runtime::RuntimeContext;
+use rune::runtime::{RuntimeContext, VmError};
 use rune::termcolor::{Buffer, BufferWriter, ColorChoice, StandardStream};
 use rune::{BuildError, Context, ContextError, Diagnostics, Source, Sources, Vm};
 use std::sync::Arc;
+use crate::context::RuneheartExecutionError::RuneVmError;
 
 #[derive(Debug)]
 pub enum RuneheartError {
-    InvalidName,
     EmptyScript,
     RuneContextError(ContextError),
     RuneAllocError(rune::alloc::Error),
@@ -20,12 +20,19 @@ pub enum RuneheartError {
     RuneDiagnosticError(String),
 }
 
+#[derive(Debug)]
+pub enum RuneheartExecutionError {
+    RuneVmError(VmError),
+}
+
 pub type RuneheartResult<T> = Result<T, RuneheartError>;
 
+pub type RuneheartExecutionResult<T> = Result<T, RuneheartExecutionError>;
+
 pub struct RuneheartContext {
-    pub name: String,
     diagnostics: Diagnostics,
     vm: Vm,
+    tick_hash: rune::Hash,
 }
 
 impl RuneheartContext {
@@ -33,10 +40,11 @@ impl RuneheartContext {
         unsafe { &*(handle as usize as *mut RuneheartContext) }
     }
 
-    pub fn new(name: String, script: String) -> RuneheartResult<Self> {
-        if name.is_empty() {
-            return Err(InvalidName);
-        }
+    pub fn from_handle_mut(handle: jlong) -> &'static mut Self {
+        unsafe { &mut *(handle as usize as *mut RuneheartContext) }
+    }
+
+    pub fn new(script: String) -> RuneheartResult<Self> {
         if script.is_empty() {
             return Err(EmptyScript);
         }
@@ -74,9 +82,15 @@ impl RuneheartContext {
         let vm = Vm::new(runtime, unit);
 
         Ok(Self {
-            name,
             diagnostics,
             vm,
+            tick_hash: rune::Hash::type_hash(["tick"])
         })
+    }
+
+    pub fn callback_tick(&mut self) -> RuneheartExecutionResult<()> {
+        self.vm.execute(self.tick_hash, ()).map_err(RuneVmError)?.complete().into_result().map_err(RuneVmError)?;
+
+        Ok(())
     }
 }
