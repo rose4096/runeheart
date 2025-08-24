@@ -66,7 +66,6 @@ class ExampleBlock(props: Properties) : BaseEntityBlock(props) {
                     }
                 }
             }
-
         }
 
         return InteractionResult.SUCCESS

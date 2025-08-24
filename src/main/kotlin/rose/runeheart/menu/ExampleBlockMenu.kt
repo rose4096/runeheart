@@ -9,6 +9,7 @@ import net.minecraft.world.inventory.AbstractContainerMenu
 import net.minecraft.world.inventory.ContainerData
 import net.minecraft.world.inventory.ContainerLevelAccess
 import net.minecraft.world.inventory.SimpleContainerData
+import net.minecraft.world.inventory.Slot
 import net.minecraft.world.item.ItemStack
 import rose.runeheart.block.ModBlocks
 
@@ -20,6 +21,7 @@ class ExampleBlockMenu(id: Int, val inv: Inventory, val access: ContainerLevelAc
 
     // converged initialization from server/client
     init {
+        // NOTE: if we want to render EMI/JEI we need at least one slot.
     }
 
     // client

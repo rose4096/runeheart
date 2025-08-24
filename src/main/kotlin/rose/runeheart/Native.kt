@@ -3,11 +3,15 @@ package rose.runeheart
 import org.apache.logging.log4j.core.Logger
 import rose.runeheart.Runeheart.LOGGER
 import rose.runeheart.blockentity.ExampleBlockEntity.RelativeBlockEntity
+import java.nio.ByteBuffer
 import java.nio.file.Files
 
 typealias NativeContextHandle = Long;
+typealias NativeRenderContextHandle = Long;
 
 object Native {
+    var renderContext: NativeRenderContextHandle = 0
+
     init {
         val resPath = "/natives/runelib.dll"
         val inStream = Native::class.java.getResourceAsStream(resPath)
@@ -29,6 +33,21 @@ object Native {
 
     @JvmStatic
     external fun tick(context: NativeContextHandle)
+
+
+    @JvmStatic
+    external fun createRenderContext(width: Long, height: Long): NativeRenderContextHandle
+    @JvmStatic
+    external fun deleteRenderContext(context: NativeRenderContextHandle)
+
+    @JvmStatic
+    external fun getPixelBuffer(context: NativeRenderContextHandle): ByteBuffer
+
+    @JvmStatic
+    external fun resizePixelBuffer(context: NativeRenderContextHandle, width: Long, height: Long): ByteBuffer
+
+    @JvmStatic
+    external fun render(context: NativeRenderContextHandle)
 }
 
 class ScriptContext(val script: String) : AutoCloseable {
