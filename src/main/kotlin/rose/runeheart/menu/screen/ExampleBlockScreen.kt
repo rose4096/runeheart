@@ -50,6 +50,9 @@ class ExampleBlockScreen(menu: ExampleBlockMenu, inv: Inventory, title: Componen
         this.renderBlurredBackground(tick)
     }
 
+    // TODO: implement key press events / mouse evenst :D
+    // TODO: egui ??
+
     override fun render(gui: GuiGraphics, mouseX: Int, mouseY: Int, tick: Float) {
         // not calling super so we can just render stuff;;;
         renderBg(gui, tick, mouseX, mouseY)
