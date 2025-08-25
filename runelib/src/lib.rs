@@ -71,9 +71,13 @@ pub extern "system" fn Java_rose_runeheart_Native_render<'local>(
     mut env: JNIEnv<'local>,
     _: JClass<'local>,
     context: jlong,
+    mouse_x: jint,
+    mouse_y: jint,
 ) {
     let context: &mut RenderContext = RenderContext::from_handle_mut(context);
 
+    let width = context.size.width;
+    let height = context.size.height;
     let canvas = context.canvas();
 
     canvas.clear(Color::from_argb(255, 255, 255, 255));
@@ -81,7 +85,12 @@ pub extern "system" fn Java_rose_runeheart_Native_render<'local>(
 
     paint.set_anti_alias(true);
     paint.set_argb(255, 90, 200, 120);
-    canvas.draw_circle((64, 64), 50.0, &paint);
+    canvas.draw_circle((width / 2, height / 2), 50.0, &paint);
+
+    if (((width / 2) - mouse_x).pow(2) + ((height / 2) - mouse_y).pow(2)).isqrt() < 50 {
+        paint.set_argb(255, 255, 200, 120);
+        canvas.clear(Color::from_argb(100, 255, 255, 255));
+    }
 
     let font_mgr = FontMgr::new();
     let default_typeface = font_mgr

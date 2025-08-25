@@ -69,7 +69,10 @@ class ExampleBlockScreen(menu: ExampleBlockMenu, inv: Inventory, title: Componen
             return;
         }
 
+        RenderSystem.enableBlend();
         RenderSystem.bindTexture(texture!!.id)
+
+        GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
         GL11.glPixelStorei(GL11.GL_UNPACK_ALIGNMENT, 1)
         GL11.glTexSubImage2D(
             GL11.GL_TEXTURE_2D, 0, 0, 0,
