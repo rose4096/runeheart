@@ -5,21 +5,19 @@ use crate::context::RuneheartContext;
 use crate::render_context::RenderContext;
 use jni::JNIEnv;
 use jni::objects::{JClass, JString};
-use jni::sys::{jlong, jobject};
-use skia_safe::{Color, ISize, Paint};
+use jni::sys::{jint, jlong, jobject};
+use skia_safe::utils::text_utils::Align;
+use skia_safe::{Color, Font, FontMgr, FontStyle, ISize, Paint, TextBlob, Typeface};
 
 #[allow(non_snake_case)]
 #[unsafe(no_mangle)]
 pub extern "system" fn Java_rose_runeheart_Native_createRenderContext<'local>(
     mut env: JNIEnv<'local>,
     _: JClass<'local>,
-    width: jlong,
-    height: jlong,
+    width: jint,
+    height: jint,
 ) -> jlong {
-    Box::into_raw(Box::new(RenderContext::new(ISize::new(
-        width as i32,
-        height as i32,
-    )))) as jlong
+    Box::into_raw(Box::new(RenderContext::new(ISize::new(width, height)))) as jlong
 }
 
 #[allow(non_snake_case)]
@@ -54,11 +52,11 @@ pub extern "system" fn Java_rose_runeheart_Native_resizePixelBuffer<'local>(
     mut env: JNIEnv<'local>,
     _: JClass<'local>,
     context: jlong,
-    width: jlong,
-    height: jlong,
+    width: jint,
+    height: jint,
 ) -> jobject {
     let context = RenderContext::from_handle_mut(context);
-    context.resize_pixel_buffer(ISize::new(width as i32, height as i32));
+    context.resize_pixel_buffer(ISize::new(width, height));
 
     unsafe {
         env.new_direct_byte_buffer(context.buffer.as_mut_ptr(), context.buffer.len())
@@ -76,8 +74,6 @@ pub extern "system" fn Java_rose_runeheart_Native_render<'local>(
 ) {
     let context: &mut RenderContext = RenderContext::from_handle_mut(context);
 
-    println!("size: {:#X?}", context.size);
-
     let canvas = context.canvas();
 
     canvas.clear(Color::from_argb(255, 255, 255, 255));
@@ -86,6 +82,22 @@ pub extern "system" fn Java_rose_runeheart_Native_render<'local>(
     paint.set_anti_alias(true);
     paint.set_argb(255, 90, 200, 120);
     canvas.draw_circle((64, 64), 50.0, &paint);
+
+    let font_mgr = FontMgr::new();
+    let default_typeface = font_mgr
+        .legacy_make_typeface(None, FontStyle::default())
+        .unwrap();
+    let default_font = Font::new(default_typeface, 30.0);
+
+    canvas.draw_text_align(
+        "aewfawefaw",
+        (200, 200),
+        &default_font,
+        &paint,
+        Align::Right,
+    );
+    let text = TextBlob::from_str("HELLO RUNEHEART", &default_font).unwrap();
+    canvas.draw_text_blob(&text, (100, 25), &paint);
 
     context.fill_pixel_buffer();
 }

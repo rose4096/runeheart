@@ -36,7 +36,7 @@ object Native {
 
 
     @JvmStatic
-    external fun createRenderContext(width: Long, height: Long): NativeRenderContextHandle
+    external fun createRenderContext(width: Int, height: Int): NativeRenderContextHandle
     @JvmStatic
     external fun deleteRenderContext(context: NativeRenderContextHandle)
 
@@ -44,10 +44,10 @@ object Native {
     external fun getPixelBuffer(context: NativeRenderContextHandle): ByteBuffer
 
     @JvmStatic
-    external fun resizePixelBuffer(context: NativeRenderContextHandle, width: Long, height: Long): ByteBuffer
+    external fun resizePixelBuffer(context: NativeRenderContextHandle, width: Int, height: Int): ByteBuffer
 
     @JvmStatic
-    external fun render(context: NativeRenderContextHandle)
+    external fun render(context: NativeRenderContextHandle, mouseX: Int, mouseY: Int)
 }
 
 class ScriptContext(val script: String) : AutoCloseable {

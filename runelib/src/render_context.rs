@@ -1,5 +1,7 @@
 use jni::sys::jlong;
-use skia_safe::{AlphaType, Color, ColorType, ISize, ImageInfo, Paint, PaintStyle, Surface, surfaces, Canvas};
+use skia_safe::{
+    AlphaType, Canvas, Color, ColorType, ISize, ImageInfo, Paint, PaintStyle, Surface, surfaces,
+};
 
 pub struct RenderContext {
     pub size: ISize,
@@ -31,9 +33,10 @@ impl RenderContext {
 
     pub fn resize_pixel_buffer(&mut self, size: ISize) {
         self.size = size;
+        self.info = ImageInfo::new(size, ColorType::RGBA8888, AlphaType::Premul, None);
         self.surface = self
             .surface
-            .new_surface_with_dimensions(size)
+            .new_surface(&self.info)
             .expect("surface resize");
         self.buffer = vec![0u8; (size.width * size.height * 4) as usize];
         self.fill_pixel_buffer();
