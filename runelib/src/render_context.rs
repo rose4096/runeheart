@@ -18,10 +18,7 @@ pub struct RenderContext {
     pub key_state: Option<KeyState>,
     pub mouse_button: Option<i32>,
     pub mouse_scroll: Option<(f64, f64)>,
-
-    // i hate fonts !
     pub font_collection: FontCollection,
-    pub mono_ts: TextStyle,
 }
 
 impl RenderContext {
@@ -35,8 +32,7 @@ impl RenderContext {
 
     pub fn new(size: ISize) -> Self {
         let info = ImageInfo::new(size, ColorType::RGBA8888, AlphaType::Premul, None);
-        let props = SurfaceProps::new(SurfacePropsFlags::empty(), PixelGeometry::BGRH);
-        let surface = surfaces::raster(&info, None, Some(&props)).expect("surface");
+        let surface = surfaces::raster(&info, None, None).expect("surface");
 
         let typeface_font_provider = {
             let mut typeface_font_provider = TypefaceFontProvider::new();
@@ -52,22 +48,6 @@ impl RenderContext {
         let mut font_collection = FontCollection::new();
         font_collection.set_default_font_manager(Some(typeface_font_provider.into()), None);
 
-        let mut regular_ts = TextStyle::new();
-        // regular_ts.set_font_size(16.0);
-
-        let mut mono_ts = TextStyle::new();
-        // mono_ts.set_font_size(13.0);
-        // mono_ts.set_typeface(tf);
-
-        // https://learn.microsoft.com/en-us/typography/opentype/spec/featurelist
-        // i dont really know what all i need to enable ;sob
-        // fk it enable all ligatures
-        // mono_ts.add_font_feature("liga", 1); // standard ligatures
-        // mono_ts.add_font_feature("clig", 1); // contextual
-        // mono_ts.add_font_feature("dlig", 1); // discretionary
-        // mono_ts.add_font_feature("hlig", 1); // historical
-        // mono_ts.add_font_feature("rlig", 1); // required
-
         Self {
             size,
             info,
@@ -77,7 +57,6 @@ impl RenderContext {
             mouse_button: None,
             mouse_scroll: None,
             font_collection,
-            mono_ts
         }
     }
 

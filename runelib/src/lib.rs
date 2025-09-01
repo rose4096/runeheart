@@ -5,8 +5,8 @@ use crate::context::RuneheartContext;
 use crate::render_context::RenderContext;
 use jni::JNIEnv;
 use jni::objects::{JClass, JString};
-use jni::sys::{jdouble, jint, jlong, jobject};
-use skia_safe::textlayout::{ParagraphBuilder, ParagraphStyle, TextAlign, TextStyle};
+use jni::sys::{jdouble, jfloat, jint, jlong, jobject};
+use skia_safe::textlayout::{Decoration, ParagraphBuilder, ParagraphStyle, TextAlign, TextDecoration, TextDecorationMode, TextStyle};
 use skia_safe::utils::text_utils::Align;
 use skia_safe::{Color, Font, FontMgr, FontStyle, ISize, Paint, TextBlob, Typeface};
 
@@ -113,6 +113,9 @@ pub extern "system" fn Java_rose_runeheart_Native_render<'local>(
     context: jlong,
     mouse_x: jint,
     mouse_y: jint,
+    // TODO: find some way to respect gui scale maybe?
+    // TODO: we currently just undo the gui scaling on the mod side... NOT GREAT!
+    gui_scale: jfloat,
 ) {
     let context: &mut RenderContext = RenderContext::from_handle_mut(context);
 
@@ -120,8 +123,6 @@ pub extern "system" fn Java_rose_runeheart_Native_render<'local>(
         let key_state = &context.key_state;
         let mouse_button = &context.mouse_button;
         let scroll_delta = &context.mouse_scroll;
-        let mono_ts = &context.mono_ts;
-        // let regular_ts = &context.regular_ts;
         let size = context.size;
 
         if key_state.is_some() {
@@ -145,8 +146,10 @@ pub extern "system" fn Java_rose_runeheart_Native_render<'local>(
         let paragraph_style = ParagraphStyle::new();
         let mut paragraph_builder = ParagraphBuilder::new(&paragraph_style, &context.font_collection);
         let mut ts = TextStyle::new();
+        let mut paint = Paint::default();
+        paint.set_anti_alias(true);
         ts.set_font_size(16.0);
-        ts.set_foreground_paint(&Paint::default())
+        ts.set_foreground_paint(&paint)
             .set_font_families(&["JetBrains Mono"]);
         paragraph_builder.push_style(&ts);
         paragraph_builder.add_text("JB MONO -> >= != ===");
@@ -154,15 +157,6 @@ pub extern "system" fn Java_rose_runeheart_Native_render<'local>(
         let mut paragraph = paragraph_builder.build();
         paragraph.layout(256.0);
         paragraph.paint(context.surface.canvas(), center);
-
-        // let mut p_style = ParagraphStyle::new();
-        // p_style.set_text_style(mono_ts);
-        // let mut builder = ParagraphBuilder::new(&p_style, &context.font_collection);
-        // builder.push_style(mono_ts);
-        // builder.add_text("JB MONO -> >= != ===");
-        // let mut para = builder.build();
-        // para.layout(100.0);
-        // para.paint(context.surface.canvas(), center);
     });
 }
 

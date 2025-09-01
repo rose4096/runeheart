@@ -10,7 +10,6 @@ import net.minecraft.resources.ResourceLocation
 import net.minecraft.world.entity.player.Inventory
 import org.lwjgl.opengl.GL11
 import rose.runeheart.Native
-import rose.runeheart.NativeRenderContextHandle
 import rose.runeheart.RenderContext
 import rose.runeheart.menu.ExampleBlockMenu
 import java.nio.ByteBuffer
@@ -27,7 +26,7 @@ class ExampleBlockScreen(menu: ExampleBlockMenu, inv: Inventory, title: Componen
         super.init()
 
         if (this.renderContext == null) {
-            this.renderContext = RenderContext(width, height);
+            this.renderContext = RenderContext(minecraft!!.window.width, minecraft!!.window.height);
         }
 
         this.resizeTexture();
@@ -37,8 +36,8 @@ class ExampleBlockScreen(menu: ExampleBlockMenu, inv: Inventory, title: Componen
         resource?.let { minecraft?.textureManager?.release(it) }
         texture?.close()
 
-        renderContext?.resizePixelBuffer(width, height);
-        texture = DynamicTexture(width, height, false)
+        renderContext?.resizePixelBuffer(minecraft!!.window.width, minecraft!!.window.height);
+        texture = DynamicTexture(minecraft!!.window.width, minecraft!!.window.height, false)
         resource = minecraft?.textureManager?.register("runeheart_gui_tex", texture!!)
         pixelBuffer = renderContext?.getPixelBuffer();
     }
@@ -78,7 +77,7 @@ class ExampleBlockScreen(menu: ExampleBlockMenu, inv: Inventory, title: Componen
 
         if (renderContext == null || renderContext?.valid() == false) return;
 
-        renderContext?.render(mouseX, mouseY);
+        renderContext?.render(mouseX, mouseY, minecraft!!.window.guiScale.toFloat());
 
         if (pixelBuffer == null || texture == null) return;
 
@@ -90,8 +89,9 @@ class ExampleBlockScreen(menu: ExampleBlockMenu, inv: Inventory, title: Componen
         RenderSystem.enableBlend();
         RenderSystem.bindTexture(texture!!.id)
 
-        GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
+        GL11.glBlendFunc(GL11.GL_ONE, GL11.GL_ONE_MINUS_SRC_ALPHA);
         GL11.glPixelStorei(GL11.GL_UNPACK_ALIGNMENT, 1)
+
         GL11.glTexSubImage2D(
             GL11.GL_TEXTURE_2D, 0, 0, 0,
             texture!!.pixels!!.width, texture!!.pixels!!.height,
@@ -99,7 +99,17 @@ class ExampleBlockScreen(menu: ExampleBlockMenu, inv: Inventory, title: Componen
             pixelBuffer!!
         )
 
-        gui.blit(resource!!, 0, 0, 0f, 0f, width, height, width, height)
+        // we are removing minecrafts gui scaling so we can render our texture at full resolution
+        // upon the entire window size. i dont fully like this approach, but its the best option
+        // for now i think.
+        val scale = minecraft!!.window.guiScale.toFloat();
+        val pose = gui.pose();
+        pose.pushPose();
+        pose.scale(1f / scale, 1f / scale, 1f);
+
+        gui.blit(resource!!, 0, 0, 0f, 0f, minecraft!!.window.width, minecraft!!.window.height, minecraft!!.window.width, minecraft!!.window.height)
+
+        pose.popPose();
     }
 
     override fun onClose() {

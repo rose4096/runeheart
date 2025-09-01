@@ -1,8 +1,8 @@
 package rose.runeheart
 
-import org.apache.logging.log4j.core.Logger
+import com.sun.jna.NativeLibrary
 import rose.runeheart.Runeheart.LOGGER
-import rose.runeheart.blockentity.ExampleBlockEntity.RelativeBlockEntity
+import java.io.File
 import java.nio.ByteBuffer
 import java.nio.file.Files
 
@@ -10,6 +10,8 @@ typealias NativeContextHandle = Long;
 typealias NativeRenderContextHandle = Long;
 
 object Native {
+    var loadedFile: File? = null
+
     init {
         val resPath = "/natives/runelib.dll"
         val inStream = Native::class.java.getResourceAsStream(resPath)
@@ -20,7 +22,13 @@ object Native {
         file.deleteOnExit()
         inStream.use { input -> file.outputStream().use { input.copyTo(it) } }
 
-        System.load(file.absolutePath)
+
+        loadedFile = file
+        System.load(loadedFile!!.absolutePath)
+    }
+
+    fun reload() {
+        NativeLibrary.getInstance(loadedFile!!.name).close();
     }
 
     @JvmStatic
@@ -55,7 +63,7 @@ object Native {
     external fun onMouseScrolled(context: NativeRenderContextHandle, scrollX: Double, scrollY: Double): Boolean
 
     @JvmStatic
-    external fun render(context: NativeRenderContextHandle, mouseX: Int, mouseY: Int)
+    external fun render(context: NativeRenderContextHandle, mouseX: Int, mouseY: Int, guiScale: Float)
 }
 
 
@@ -96,8 +104,8 @@ class RenderContext(val width: Int, val height: Int) : AutoCloseable {
         return Native.onMouseScrolled(handle, scrollX, scrollY);
     }
 
-    fun render(mouseX: Int, mouseY: Int) {
-        return Native.render(handle, mouseX, mouseY);
+    fun render(mouseX: Int, mouseY: Int, guiScale: Float) {
+        return Native.render(handle, mouseX, mouseY, guiScale);
     }
 
     override fun close() {
