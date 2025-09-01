@@ -10,8 +10,6 @@ typealias NativeContextHandle = Long;
 typealias NativeRenderContextHandle = Long;
 
 object Native {
-    var renderContext: NativeRenderContextHandle = 0
-
     init {
         val resPath = "/natives/runelib.dll"
         val inStream = Native::class.java.getResourceAsStream(resPath)
@@ -37,6 +35,7 @@ object Native {
 
     @JvmStatic
     external fun createRenderContext(width: Int, height: Int): NativeRenderContextHandle
+
     @JvmStatic
     external fun deleteRenderContext(context: NativeRenderContextHandle)
 
@@ -47,7 +46,65 @@ object Native {
     external fun resizePixelBuffer(context: NativeRenderContextHandle, width: Int, height: Int): ByteBuffer
 
     @JvmStatic
+    external fun onKeyPressed(context: NativeRenderContextHandle, keyCode: Int, scanCode: Int, modifiers: Int): Boolean
+
+    @JvmStatic
+    external fun onMousePressed(context: NativeRenderContextHandle, button: Int): Boolean
+
+    @JvmStatic
+    external fun onMouseScrolled(context: NativeRenderContextHandle, scrollX: Double, scrollY: Double): Boolean
+
+    @JvmStatic
     external fun render(context: NativeRenderContextHandle, mouseX: Int, mouseY: Int)
+}
+
+
+// TODO: use this instead of a global render context handle
+class RenderContext(val width: Int, val height: Int) : AutoCloseable {
+    var handle: NativeRenderContextHandle = 0;
+
+    init {
+        handle = try {
+            Native.createRenderContext(width, height)
+        } catch (e: RuntimeException) {
+            LOGGER.error(e.message)
+            0L
+        }
+    }
+
+    fun valid(): Boolean {
+        return handle != 0L;
+    }
+
+    fun getPixelBuffer(): ByteBuffer {
+        return Native.getPixelBuffer(handle);
+    }
+
+    fun resizePixelBuffer(width: Int, height: Int): ByteBuffer {
+        return Native.resizePixelBuffer(handle, width, height);
+    }
+
+    fun onKeyPressed(keyCode: Int, scanCode: Int, modifiers: Int): Boolean {
+        return Native.onKeyPressed(handle, keyCode, scanCode, modifiers);
+    }
+
+    fun onMousePressed(button: Int): Boolean {
+        return Native.onMousePressed(handle, button);
+    }
+
+    fun onMouseScrolled(scrollX: Double, scrollY: Double): Boolean {
+        return Native.onMouseScrolled(handle, scrollX, scrollY);
+    }
+
+    fun render(mouseX: Int, mouseY: Int) {
+        return Native.render(handle, mouseX, mouseY);
+    }
+
+    override fun close() {
+        if (handle != 0L) {
+            Native.deleteRenderContext(handle)
+        }
+    }
 }
 
 class ScriptContext(val script: String) : AutoCloseable {

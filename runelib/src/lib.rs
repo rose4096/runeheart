@@ -5,7 +5,8 @@ use crate::context::RuneheartContext;
 use crate::render_context::RenderContext;
 use jni::JNIEnv;
 use jni::objects::{JClass, JString};
-use jni::sys::{jint, jlong, jobject};
+use jni::sys::{jdouble, jint, jlong, jobject};
+use skia_safe::textlayout::{ParagraphBuilder, ParagraphStyle, TextAlign, TextStyle};
 use skia_safe::utils::text_utils::Align;
 use skia_safe::{Color, Font, FontMgr, FontStyle, ISize, Paint, TextBlob, Typeface};
 
@@ -67,6 +68,45 @@ pub extern "system" fn Java_rose_runeheart_Native_resizePixelBuffer<'local>(
 
 #[allow(non_snake_case)]
 #[unsafe(no_mangle)]
+pub extern "system" fn Java_rose_runeheart_Native_onKeyPressed<'local>(
+    mut env: JNIEnv<'local>,
+    _: JClass<'local>,
+    context: jlong,
+    key_code: jint,
+    scan_mode: jint,
+    modifiers: jint,
+) {
+    let context: &mut RenderContext = RenderContext::from_handle_mut(context);
+    context.update_key_state(key_code, scan_mode, modifiers);
+}
+
+#[allow(non_snake_case)]
+#[unsafe(no_mangle)]
+pub extern "system" fn Java_rose_runeheart_Native_onMousePressed<'local>(
+    mut env: JNIEnv<'local>,
+    _: JClass<'local>,
+    context: jlong,
+    button: jint,
+) {
+    let context: &mut RenderContext = RenderContext::from_handle_mut(context);
+    context.update_mouse_press_state(button);
+}
+
+#[allow(non_snake_case)]
+#[unsafe(no_mangle)]
+pub extern "system" fn Java_rose_runeheart_Native_onMouseScrolled<'local>(
+    mut env: JNIEnv<'local>,
+    _: JClass<'local>,
+    context: jlong,
+    delta_x: jdouble,
+    delta_y: jdouble,
+) {
+    let context: &mut RenderContext = RenderContext::from_handle_mut(context);
+    context.update_mouse_scroll_state(delta_x, delta_y);
+}
+
+#[allow(non_snake_case)]
+#[unsafe(no_mangle)]
 pub extern "system" fn Java_rose_runeheart_Native_render<'local>(
     mut env: JNIEnv<'local>,
     _: JClass<'local>,
@@ -76,39 +116,54 @@ pub extern "system" fn Java_rose_runeheart_Native_render<'local>(
 ) {
     let context: &mut RenderContext = RenderContext::from_handle_mut(context);
 
-    let width = context.size.width;
-    let height = context.size.height;
-    let canvas = context.canvas();
+    context.draw(|context| {
+        let key_state = &context.key_state;
+        let mouse_button = &context.mouse_button;
+        let scroll_delta = &context.mouse_scroll;
+        let mono_ts = &context.mono_ts;
+        // let regular_ts = &context.regular_ts;
+        let size = context.size;
 
-    canvas.clear(Color::from_argb(255, 255, 255, 255));
-    let mut paint = Paint::default();
+        if key_state.is_some() {
+            println!("{:#X?}", key_state);
+        }
+        if mouse_button.is_some() {
+            println!("{:#X?}", mouse_button);
+        }
+        if scroll_delta.is_some() {
+            println!("{:#X?}", scroll_delta);
+        }
 
-    paint.set_anti_alias(true);
-    paint.set_argb(255, 90, 200, 120);
-    canvas.draw_circle((width / 2, height / 2), 50.0, &paint);
+        let (width, height) = (size.width, size.height);
+        let center = (width / 2, height / 2);
 
-    if (((width / 2) - mouse_x).pow(2) + ((height / 2) - mouse_y).pow(2)).isqrt() < 50 {
-        paint.set_argb(255, 255, 200, 120);
-        canvas.clear(Color::from_argb(100, 255, 255, 255));
-    }
+        context.surface.canvas().clear(Color::from_argb(0, 0, 0, 0));
+        let mut paint = Paint::default();
+        paint.set_anti_alias(true);
+        paint.set_color(Color::BLACK);
 
-    let font_mgr = FontMgr::new();
-    let default_typeface = font_mgr
-        .legacy_make_typeface(None, FontStyle::default())
-        .unwrap();
-    let default_font = Font::new(default_typeface, 30.0);
+        let paragraph_style = ParagraphStyle::new();
+        let mut paragraph_builder = ParagraphBuilder::new(&paragraph_style, &context.font_collection);
+        let mut ts = TextStyle::new();
+        ts.set_font_size(16.0);
+        ts.set_foreground_paint(&Paint::default())
+            .set_font_families(&["JetBrains Mono"]);
+        paragraph_builder.push_style(&ts);
+        paragraph_builder.add_text("JB MONO -> >= != ===");
 
-    canvas.draw_text_align(
-        "aewfawefaw",
-        (200, 200),
-        &default_font,
-        &paint,
-        Align::Right,
-    );
-    let text = TextBlob::from_str("HELLO RUNEHEART", &default_font).unwrap();
-    canvas.draw_text_blob(&text, (100, 25), &paint);
+        let mut paragraph = paragraph_builder.build();
+        paragraph.layout(256.0);
+        paragraph.paint(context.surface.canvas(), center);
 
-    context.fill_pixel_buffer();
+        // let mut p_style = ParagraphStyle::new();
+        // p_style.set_text_style(mono_ts);
+        // let mut builder = ParagraphBuilder::new(&p_style, &context.font_collection);
+        // builder.push_style(mono_ts);
+        // builder.add_text("JB MONO -> >= != ===");
+        // let mut para = builder.build();
+        // para.layout(100.0);
+        // para.paint(context.surface.canvas(), center);
+    });
 }
 
 #[allow(non_snake_case)]

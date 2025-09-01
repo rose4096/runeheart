@@ -10,12 +10,15 @@ import net.minecraft.resources.ResourceLocation
 import net.minecraft.world.entity.player.Inventory
 import org.lwjgl.opengl.GL11
 import rose.runeheart.Native
+import rose.runeheart.NativeRenderContextHandle
+import rose.runeheart.RenderContext
 import rose.runeheart.menu.ExampleBlockMenu
 import java.nio.ByteBuffer
 
 class ExampleBlockScreen(menu: ExampleBlockMenu, inv: Inventory, title: Component) :
     AbstractContainerScreen<ExampleBlockMenu>(menu, inv, title) {
 
+    private var renderContext: RenderContext? = null
     private var pixelBuffer: ByteBuffer? = null;
     private var texture: DynamicTexture? = null;
     private var resource: ResourceLocation? = null;
@@ -23,8 +26,8 @@ class ExampleBlockScreen(menu: ExampleBlockMenu, inv: Inventory, title: Componen
     override fun init() {
         super.init()
 
-        if (Native.renderContext == 0L) {
-            Native.renderContext = Native.createRenderContext(width, height);
+        if (this.renderContext == null) {
+            this.renderContext = RenderContext(width, height);
         }
 
         this.resizeTexture();
@@ -34,10 +37,10 @@ class ExampleBlockScreen(menu: ExampleBlockMenu, inv: Inventory, title: Componen
         resource?.let { minecraft?.textureManager?.release(it) }
         texture?.close()
 
-        Native.resizePixelBuffer(Native.renderContext, width, height);
+        renderContext?.resizePixelBuffer(width, height);
         texture = DynamicTexture(width, height, false)
         resource = minecraft?.textureManager?.register("runeheart_gui_tex", texture!!)
-        pixelBuffer = Native.getPixelBuffer(Native.renderContext);
+        pixelBuffer = renderContext?.getPixelBuffer();
     }
 
     override fun resize(minecraft: Minecraft, width: Int, height: Int) {
@@ -50,8 +53,20 @@ class ExampleBlockScreen(menu: ExampleBlockMenu, inv: Inventory, title: Componen
         this.renderBlurredBackground(tick)
     }
 
-    // TODO: implement key press events / mouse evenst :D
-    // TODO: egui ??
+    override fun keyPressed(keyCode: Int, scanCode: Int, modifiers: Int): Boolean {
+        renderContext?.onKeyPressed(keyCode, scanCode, modifiers);
+        return super.keyPressed(keyCode, scanCode, modifiers)
+    }
+
+    override fun mouseClicked(mouseX: Double, mouseY: Double, button: Int): Boolean {
+        renderContext?.onMousePressed(button);
+        return super.mouseClicked(mouseX, mouseY, button)
+    }
+
+    override fun mouseScrolled(mouseX: Double, mouseY: Double, scrollX: Double, scrollY: Double): Boolean {
+        renderContext?.onMouseScrolled(scrollX, scrollY);
+        return super.mouseScrolled(mouseX, mouseY, scrollX, scrollY)
+    }
 
     override fun render(gui: GuiGraphics, mouseX: Int, mouseY: Int, tick: Float) {
         // not calling super so we can just render stuff;;;
@@ -61,9 +76,9 @@ class ExampleBlockScreen(menu: ExampleBlockMenu, inv: Inventory, title: Componen
             renderable.render(gui, mouseX, mouseY, tick)
         }
 
-        if (Native.renderContext == 0L) return;
+        if (renderContext == null || renderContext?.valid() == false) return;
 
-        Native.render(Native.renderContext, mouseX, mouseY);
+        renderContext?.render(mouseX, mouseY);
 
         if (pixelBuffer == null || texture == null) return;
 
@@ -85,5 +100,11 @@ class ExampleBlockScreen(menu: ExampleBlockMenu, inv: Inventory, title: Componen
         )
 
         gui.blit(resource!!, 0, 0, 0f, 0f, width, height, width, height)
+    }
+
+    override fun onClose() {
+        this.renderContext?.close();
+
+        super.onClose()
     }
 }

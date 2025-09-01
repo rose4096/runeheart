@@ -25,3 +25,8 @@ the mod itself which currently just hosts runelib
 - /runelib
 
 jni bindings for runeheart to execute/manage rune scripts
+
+## weird things
+
+if your bundled jdk includes an msvcp140.dll then the skia paragraph builder will crash the program on instantiation. i dont have a proper solution for this yet besides me just deleting it. lol (it works!)
+maybe should try just unloading the loaded one and loading the system one (?) is this insane?
