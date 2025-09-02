@@ -1,2 +1,2 @@
-mod screen;
-mod jni;
+pub mod screen;
+pub mod jni;
