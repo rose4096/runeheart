@@ -1,24 +1,19 @@
-use std::rc::Rc;
+use jni::JNIEnv;
+use jni::objects::JByteBuffer;
+use crate::render::input::{Delta, Input, KeyState};
 use jni::sys::jlong;
-use skia_safe::{AlphaType, Canvas, Color, ColorType, ISize, ImageInfo, Paint, PaintStyle, Surface, surfaces, FontMgr, FontStyle, Font, SurfaceProps, SurfacePropsFlags, PixelGeometry};
-use skia_safe::textlayout::{FontCollection, FontFeature, ParagraphBuilder, ParagraphStyle, TextStyle, TypefaceFontProvider};
-
-#[derive(Default, Debug)]
-pub struct KeyState {
-    key_code: i32,
-    scan_mode: i32,
-    modifiers: i32,
-}
+use skia_safe::textlayout::{FontCollection, TypefaceFontProvider};
+use skia_safe::{AlphaType, Canvas, ColorType, FontMgr, ISize, ImageInfo, Surface, surfaces};
 
 pub struct RenderContext {
-    pub size: ISize,
-    pub buffer: Vec<u8>,
+    size: ISize,
+    buffer: Vec<u8>,
+    input: Input,
+
+    // skia
     info: ImageInfo,
-    pub surface: Surface,
-    pub key_state: Option<KeyState>,
-    pub mouse_button: Option<i32>,
-    pub mouse_scroll: Option<(f64, f64)>,
-    pub font_collection: FontCollection,
+    surface: Surface,
+    font_collection: FontCollection,
 }
 
 impl RenderContext {
@@ -38,7 +33,7 @@ impl RenderContext {
             let mut typeface_font_provider = TypefaceFontProvider::new();
             let font_mgr = FontMgr::new();
             let typeface = font_mgr
-                .new_from_data(include_bytes!("font/JetBrainsMono-Regular.ttf"), None)
+                .new_from_data(include_bytes!("../font/JetBrainsMono-Regular.ttf"), None)
                 .expect("failed to load jb mono");
 
             typeface_font_provider.register_typeface(typeface, None);
@@ -50,12 +45,11 @@ impl RenderContext {
 
         Self {
             size,
+            buffer: vec![0u8; (size.width * size.height * 4) as usize],
+            input: Input::default(),
+
             info,
             surface,
-            buffer: vec![0u8; (size.width * size.height * 4) as usize],
-            key_state: None,
-            mouse_button: None,
-            mouse_scroll: None,
             font_collection,
         }
     }
@@ -77,35 +71,38 @@ impl RenderContext {
             .read_pixels(&self.info, &mut self.buffer, rb, (0, 0));
     }
 
-    fn reset_inputs(&mut self) {
-        self.mouse_button = None;
-        self.mouse_scroll = None;
-        self.key_state = None;
+    pub fn canvas(&mut self) -> &Canvas {
+        self.surface.canvas()
     }
 
-    pub fn draw<F>(&mut self, callback: F)
-    where
-        F: Fn(&mut Self),
-    {
-        callback(self);
+    // TODO: should probably not do this very often!
+    pub fn create_byte_buffer<'local>(&mut self, env: &mut JNIEnv<'local>) -> jni::errors::Result<JByteBuffer<'local>> {
+        unsafe {
+            env.new_direct_byte_buffer(self.buffer.as_mut_ptr(), self.buffer.len())
+        }
+    }
 
-        self.reset_inputs();
+    pub fn end_draw(&mut self) {
+        self.input.reset();
         self.fill_pixel_buffer();
     }
 
-    pub fn update_key_state(&mut self, key_code: i32, scan_mode: i32, modifiers: i32) {
-        self.key_state = Some(KeyState {
+    pub fn on_key_pressed(&mut self, key_code: i32, scan_mode: i32, modifiers: i32) {
+        self.input.key_state = Some(KeyState {
             key_code,
             scan_mode,
             modifiers,
         })
     }
 
-    pub fn update_mouse_press_state(&mut self, button: i32) {
-        self.mouse_button = Some(button)
+    pub fn on_mouse_pressed(&mut self, button: i32) {
+        self.input.mouse_button_down = Some(button);
     }
 
-    pub fn update_mouse_scroll_state(&mut self, delta_x: f64, delta_y: f64) {
-        self.mouse_scroll = Some((delta_x, delta_y))
+    pub fn on_mouse_scrolled(&mut self, delta_x: f64, delta_y: f64) {
+        self.input.scroll_delta = Some(Delta {
+            x: delta_x,
+            y: delta_y,
+        })
     }
 }

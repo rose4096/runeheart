@@ -8,6 +8,7 @@ import net.minecraft.client.renderer.texture.DynamicTexture
 import net.minecraft.network.chat.Component
 import net.minecraft.resources.ResourceLocation
 import net.minecraft.world.entity.player.Inventory
+import net.minecraft.world.inventory.Slot
 import org.lwjgl.opengl.GL11
 import rose.runeheart.Native
 import rose.runeheart.RenderContext
