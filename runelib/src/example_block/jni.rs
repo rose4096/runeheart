@@ -17,10 +17,12 @@ pub extern "system" fn Java_rose_runeheart_Native_renderExampleBlock<'local>(
     mouse_y: jint,
     // TODO: find some way to respect gui scale maybe?
     // TODO: we currently just undo the gui scaling on the kotlin side... NOT GREAT!
-    _: jfloat,
+    gui_scale: jfloat,
 ) {
     let context: &mut RenderContext = RenderContext::from_handle_mut(context);
-    context.on_mouse_move(mouse_x, mouse_y);
+
+    // multiply mouse_x/y by gui_scale so the position is accurate
+    context.on_mouse_move(mouse_x * gui_scale as jint, mouse_y * gui_scale as jint);
 
     let example_block_screen = ExampleBlockScreen::default();
 

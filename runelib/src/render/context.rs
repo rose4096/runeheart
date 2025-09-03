@@ -1,4 +1,4 @@
-use crate::render::input::{Delta, Input, KeyState, Position};
+use crate::render::input::{Delta, Input, KeyState, MouseButton, Position};
 use jni::JNIEnv;
 use jni::objects::JByteBuffer;
 use jni::sys::jlong;
@@ -108,7 +108,12 @@ impl RenderContext {
     }
 
     pub fn on_mouse_pressed(&mut self, button: i32) {
-        self.input.mouse_button_down = Some(button);
+        self.input.mouse_button_down = match button {
+            0 => Some(MouseButton::Left),
+            1 => Some(MouseButton::Right),
+            2 => Some(MouseButton::Middle),
+            _ => None,
+        };
     }
 
     pub fn on_mouse_scrolled(&mut self, delta_x: f64, delta_y: f64) {

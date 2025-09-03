@@ -13,10 +13,18 @@ pub struct Position<T> {
 
 pub type Delta = Position<f64>;
 
+#[repr(u32)]
+#[derive(Debug, PartialEq)]
+pub enum MouseButton {
+    Left = 0,
+    Right = 1,
+    Middle = 2,
+}
+
 #[derive(Default, Debug)]
 pub struct Input {
     pub mouse_position: Position<i32>,
-    pub mouse_button_down: Option<i32>,
+    pub mouse_button_down: Option<MouseButton>,
     pub scroll_delta: Option<Delta>,
     pub key_state: Option<KeyState>,
 }
