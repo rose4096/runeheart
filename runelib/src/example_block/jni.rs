@@ -2,8 +2,10 @@ use jni::JNIEnv;
 use jni::objects::JClass;
 use jni::sys::{jfloat, jint, jlong};
 use skia_safe::{Color, Paint};
-use skia_safe::textlayout::{ParagraphBuilder, ParagraphStyle, TextStyle};
+use skia_safe::textlayout::{FontCollection, ParagraphBuilder, ParagraphStyle, TextStyle};
+use crate::example_block::screen::ExampleBlockScreen;
 use crate::render::context::RenderContext;
+use crate::screen::ScreenRenderable;
 
 #[allow(non_snake_case)]
 #[unsafe(no_mangle)]
@@ -18,6 +20,13 @@ pub extern "system" fn Java_rose_runeheart_Native_renderExampleBlock<'local>(
     gui_scale: jfloat,
 ) {
     let context: &mut RenderContext = RenderContext::from_handle_mut(context);
+    context.on_mouse_move(mouse_x, mouse_y);
+
+    let example_block_screen = ExampleBlockScreen::default();
+
+    context.with_canvas(|canvas, input, size, font_collection| {
+        example_block_screen.render(canvas, input, size, font_collection);
+    });
 
     // let key_state = &context.key_state;
     // let mouse_button = &context.mouse_button;

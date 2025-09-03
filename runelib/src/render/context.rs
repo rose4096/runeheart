@@ -1,9 +1,9 @@
+use crate::render::input::{Delta, Input, KeyState, Position};
 use jni::JNIEnv;
 use jni::objects::JByteBuffer;
-use crate::render::input::{Delta, Input, KeyState};
 use jni::sys::jlong;
 use skia_safe::textlayout::{FontCollection, TypefaceFontProvider};
-use skia_safe::{AlphaType, Canvas, ColorType, FontMgr, ISize, ImageInfo, Surface, surfaces};
+use skia_safe::{AlphaType, Canvas, ColorType, FontMgr, ISize, ImageInfo, Point, Surface, surfaces, Color};
 
 pub struct RenderContext {
     size: ISize,
@@ -71,20 +71,32 @@ impl RenderContext {
             .read_pixels(&self.info, &mut self.buffer, rb, (0, 0));
     }
 
-    pub fn canvas(&mut self) -> &Canvas {
-        self.surface.canvas()
-    }
-
     // TODO: should probably not do this very often!
-    pub fn create_byte_buffer<'local>(&mut self, env: &mut JNIEnv<'local>) -> jni::errors::Result<JByteBuffer<'local>> {
-        unsafe {
-            env.new_direct_byte_buffer(self.buffer.as_mut_ptr(), self.buffer.len())
-        }
+    pub fn create_byte_buffer<'local>(
+        &mut self,
+        env: &mut JNIEnv<'local>,
+    ) -> jni::errors::Result<JByteBuffer<'local>> {
+        unsafe { env.new_direct_byte_buffer(self.buffer.as_mut_ptr(), self.buffer.len()) }
     }
 
     pub fn end_draw(&mut self) {
         self.input.reset();
         self.fill_pixel_buffer();
+    }
+
+    pub fn input(&self) -> &Input {
+        &self.input
+    }
+
+    pub fn size(&self) -> &ISize {
+        &self.size
+    }
+
+    pub fn on_mouse_move(&mut self, mouse_x: i32, mouse_y: i32) {
+        self.input.mouse_position = Position {
+            x: mouse_x,
+            y: mouse_y,
+        }
     }
 
     pub fn on_key_pressed(&mut self, key_code: i32, scan_mode: i32, modifiers: i32) {
@@ -104,5 +116,13 @@ impl RenderContext {
             x: delta_x,
             y: delta_y,
         })
+    }
+
+    // i really hate this but also why does Surface::canvas take a mutable ref
+    pub fn with_canvas<R>(&mut self, f: impl FnOnce(&Canvas, &Input, &ISize, &FontCollection) -> R) -> R {
+        // clear the canvas before we use it ... 
+        self.surface.canvas().clear(Color::from_argb(0, 0, 0, 0));
+        
+        f(self.surface.canvas(), &self.input, &self.size, &self.font_collection)
     }
 }
