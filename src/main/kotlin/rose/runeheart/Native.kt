@@ -54,13 +54,19 @@ object Native {
     external fun resizePixelBuffer(context: NativeRenderContextHandle, width: Int, height: Int): ByteBuffer
 
     @JvmStatic
-    external fun onKeyPressed(context: NativeRenderContextHandle, keyCode: Int, scanCode: Int, modifiers: Int): Boolean
+    external fun onKeyPressed(context: NativeRenderContextHandle, keyCode: Int, scanCode: Int, modifiers: Int)
 
     @JvmStatic
-    external fun onMousePressed(context: NativeRenderContextHandle, button: Int): Boolean
+    external fun onKeyReleased(context: NativeRenderContextHandle)
 
     @JvmStatic
-    external fun onMouseScrolled(context: NativeRenderContextHandle, scrollX: Double, scrollY: Double): Boolean
+    external fun onMousePressed(context: NativeRenderContextHandle, button: Int)
+
+    @JvmStatic
+    external fun onMouseReleased(context: NativeRenderContextHandle)
+
+    @JvmStatic
+    external fun onMouseScrolled(context: NativeRenderContextHandle, scrollX: Double, scrollY: Double)
 
     @JvmStatic
     external fun renderExampleBlock(context: NativeRenderContextHandle, mouseX: Int, mouseY: Int, guiScale: Float)
@@ -92,17 +98,27 @@ class RenderContext(val width: Int, val height: Int) : AutoCloseable {
         return Native.resizePixelBuffer(handle, width, height);
     }
 
-    fun onKeyPressed(keyCode: Int, scanCode: Int, modifiers: Int): Boolean {
-        return Native.onKeyPressed(handle, keyCode, scanCode, modifiers);
+    fun onKeyPressed(keyCode: Int, scanCode: Int, modifiers: Int) {
+        Native.onKeyPressed(handle, keyCode, scanCode, modifiers);
     }
 
-    fun onMousePressed(button: Int): Boolean {
-        return Native.onMousePressed(handle, button);
+    fun onKeyReleased() {
+        Native.onKeyReleased(handle);
     }
 
-    fun onMouseScrolled(scrollX: Double, scrollY: Double): Boolean {
-        return Native.onMouseScrolled(handle, scrollX, scrollY);
+    fun onMousePressed(button: Int) {
+        Native.onMousePressed(handle, button);
     }
+
+    fun onMouseReleased() {
+        Native.onMouseReleased(handle);
+    }
+
+    fun onMouseScrolled(scrollX: Double, scrollY: Double) {
+        Native.onMouseScrolled(handle, scrollX, scrollY);
+    }
+
+    fun onCharacterTyped(character: Char) {}
 
     // TODO: maybe override this and then have the native funciton be provided so like ScreenRenderContext and
     //       make this funciton overridable .

@@ -1,3 +1,5 @@
+use skia_safe::Rect;
+
 #[derive(Default, Debug)]
 pub struct KeyState {
     pub key_code: i32,
@@ -30,9 +32,26 @@ pub struct Input {
 }
 
 impl Input {
-    pub fn reset(&mut self) {
-        self.mouse_button_down = None;
+    pub fn reset_scroll(&mut self) {
         self.scroll_delta = None;
+    }
+
+    pub fn reset_key_state(&mut self) {
         self.key_state = None;
+    }
+
+    pub fn reset_mouse_button(&mut self) {
+        self.mouse_button_down = None;
+    }
+
+    pub fn is_mouse_down(&self, button: MouseButton) -> bool {
+        self.mouse_button_down == Some(button)
+    }
+
+    pub fn is_mouse_hovering(&self, rect: Rect) -> bool {
+        self.mouse_position.x > rect.left as i32
+            && self.mouse_position.x < rect.right as i32
+            && self.mouse_position.y > rect.top as i32
+            && self.mouse_position.y < rect.bottom as i32
     }
 }

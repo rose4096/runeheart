@@ -1,9 +1,12 @@
 use crate::render::input::{Delta, Input, KeyState, MouseButton, Position};
+use crate::screen::ScreenRenderable;
 use jni::JNIEnv;
 use jni::objects::JByteBuffer;
 use jni::sys::jlong;
 use skia_safe::textlayout::{FontCollection, TypefaceFontProvider};
-use skia_safe::{AlphaType, Canvas, ColorType, FontMgr, ISize, ImageInfo, Point, Surface, surfaces, Color};
+use skia_safe::{
+    AlphaType, Canvas, Color, ColorType, FontMgr, ISize, ImageInfo, Point, Surface, surfaces,
+};
 
 pub struct RenderContext {
     size: ISize,
@@ -14,6 +17,7 @@ pub struct RenderContext {
     info: ImageInfo,
     surface: Surface,
     font_collection: FontCollection,
+    renderables: Vec<Box<dyn ScreenRenderable>>,
 }
 
 impl RenderContext {
@@ -47,10 +51,10 @@ impl RenderContext {
             size,
             buffer: vec![0u8; (size.width * size.height * 4) as usize],
             input: Input::default(),
-
             info,
             surface,
             font_collection,
+            renderables: Vec::new(),
         }
     }
 
@@ -65,7 +69,7 @@ impl RenderContext {
         self.fill_pixel_buffer();
     }
 
-    pub fn fill_pixel_buffer(&mut self) {
+    fn fill_pixel_buffer(&mut self) {
         let rb = (self.size.width * 4) as usize;
         self.surface
             .read_pixels(&self.info, &mut self.buffer, rb, (0, 0));
@@ -79,8 +83,8 @@ impl RenderContext {
         unsafe { env.new_direct_byte_buffer(self.buffer.as_mut_ptr(), self.buffer.len()) }
     }
 
-    pub fn end_draw(&mut self) {
-        self.input.reset();
+    fn end_draw(&mut self) {
+        self.input.reset_scroll();
         self.fill_pixel_buffer();
     }
 
@@ -107,6 +111,14 @@ impl RenderContext {
         })
     }
 
+    pub fn on_key_released(&mut self) {
+        self.input.reset_key_state();
+    }
+
+    pub fn on_mouse_released(&mut self) {
+        self.input.reset_mouse_button();
+    }
+
     pub fn on_mouse_pressed(&mut self, button: i32) {
         self.input.mouse_button_down = match button {
             0 => Some(MouseButton::Left),
@@ -124,10 +136,45 @@ impl RenderContext {
     }
 
     // i really hate this but also why does Surface::canvas take a mutable ref
-    pub fn with_canvas<R>(&mut self, f: impl FnOnce(&Canvas, &Input, &ISize, &FontCollection) -> R) -> R {
-        // clear the canvas before we use it ... 
+    // also it lets us wrap .end_draw nicely
+    pub fn with_canvas(
+        &mut self,
+        f: impl FnOnce(&Canvas, &Input, &ISize, &FontCollection, &[Box<dyn ScreenRenderable>]),
+    ) {
+        // clear the canvas before we use it ...
         self.surface.canvas().clear(Color::from_argb(0, 0, 0, 0));
-        
-        f(self.surface.canvas(), &self.input, &self.size, &self.font_collection)
+
+        f(
+            self.surface.canvas(),
+            &self.input,
+            &self.size,
+            &self.font_collection,
+            &self.renderables,
+        );
+
+        self.end_draw();
+    }
+
+    pub fn render_all(&mut self) {
+        self.surface.canvas().clear(Color::from_argb(0, 0, 0, 0));
+
+        self.renderables.iter_mut().for_each(|f| {
+            f.render(
+                self.surface.canvas(),
+                &self.input,
+                &self.size,
+                &self.font_collection,
+            )
+        });
+
+        self.end_draw();
+    }
+
+    pub fn push_renderable(&mut self, renderable: Box<dyn ScreenRenderable>) {
+        self.renderables.push(renderable);
+    }
+
+    pub fn is_renderables_empty(&self) -> bool {
+        self.renderables.is_empty()
     }
 }

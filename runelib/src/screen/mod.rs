@@ -8,11 +8,11 @@ pub enum Font {
 }
 
 pub trait ScreenRenderable {
-    fn draw_text(
+    fn draw_text_raw(
         &self,
         canvas: &Canvas,
-        text: impl AsRef<str>,
-        position: impl Into<Point>,
+        text: &str,
+        position: Point,
         font: Font,
         font_collection: &FontCollection,
     ) {
@@ -47,10 +47,31 @@ pub trait ScreenRenderable {
     }
 
     fn render(
-        &self,
+        &mut self,
         canvas: &Canvas,
         input: &Input,
         screen_size: &ISize,
         font_collection: &FontCollection,
     );
 }
+
+pub trait ScreenRenderableExt: ScreenRenderable {
+    fn draw_text(
+        &self,
+        canvas: &Canvas,
+        text: impl AsRef<str>,
+        position: impl Into<Point>,
+        font: Font,
+        font_collection: &FontCollection,
+    ) {
+        self.draw_text_raw(
+            canvas,
+            text.as_ref(),
+            position.into(),
+            font,
+            font_collection,
+        );
+    }
+}
+
+impl<T: ScreenRenderable + ?Sized> ScreenRenderableExt for T {}

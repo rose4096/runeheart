@@ -68,6 +68,17 @@ pub extern "system" fn Java_rose_runeheart_Native_onKeyPressed<'local>(
 
 #[allow(non_snake_case)]
 #[unsafe(no_mangle)]
+pub extern "system" fn Java_rose_runeheart_Native_onKeyReleased<'local>(
+    mut env: JNIEnv<'local>,
+    _: JClass<'local>,
+    context: jlong,
+) {
+    let context: &mut RenderContext = RenderContext::from_handle_mut(context);
+    context.on_key_released();
+}
+
+#[allow(non_snake_case)]
+#[unsafe(no_mangle)]
 pub extern "system" fn Java_rose_runeheart_Native_onMousePressed<'local>(
     mut env: JNIEnv<'local>,
     _: JClass<'local>,
@@ -76,6 +87,17 @@ pub extern "system" fn Java_rose_runeheart_Native_onMousePressed<'local>(
 ) {
     let context: &mut RenderContext = RenderContext::from_handle_mut(context);
     context.on_mouse_pressed(button);
+}
+
+#[allow(non_snake_case)]
+#[unsafe(no_mangle)]
+pub extern "system" fn Java_rose_runeheart_Native_onMouseReleased<'local>(
+    mut env: JNIEnv<'local>,
+    _: JClass<'local>,
+    context: jlong,
+) {
+    let context: &mut RenderContext = RenderContext::from_handle_mut(context);
+    context.on_mouse_released();
 }
 
 #[allow(non_snake_case)]
@@ -89,4 +111,15 @@ pub extern "system" fn Java_rose_runeheart_Native_onMouseScrolled<'local>(
 ) {
     let context: &mut RenderContext = RenderContext::from_handle_mut(context);
     context.on_mouse_scrolled(delta_x, delta_y);
+}
+
+#[allow(non_snake_case)]
+#[unsafe(no_mangle)]
+pub extern "system" fn Java_rose_runeheart_Native_onCharacterTyped<'local>(
+    mut env: JNIEnv<'local>,
+    _: JClass<'local>,
+    context: jlong,
+) {
+    let context: &mut RenderContext = RenderContext::from_handle_mut(context);
+    context.on_key_released();
 }

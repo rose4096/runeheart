@@ -59,14 +59,28 @@ class ExampleBlockScreen(menu: ExampleBlockMenu, inv: Inventory, title: Componen
         return super.keyPressed(keyCode, scanCode, modifiers)
     }
 
+    override fun keyReleased(keyCode: Int, scanCode: Int, modifiers: Int): Boolean {
+        renderContext?.onKeyReleased()
+        return super.keyReleased(keyCode, scanCode, modifiers);
+    }
+
     override fun mouseClicked(mouseX: Double, mouseY: Double, button: Int): Boolean {
         renderContext?.onMousePressed(button);
         return super.mouseClicked(mouseX, mouseY, button)
     }
 
+    override fun mouseReleased(mouseX: Double, mouseY: Double, button: Int): Boolean {
+        renderContext?.onMouseReleased();
+        return super.mouseReleased(mouseX, mouseY, button);
+    }
+
     override fun mouseScrolled(mouseX: Double, mouseY: Double, scrollX: Double, scrollY: Double): Boolean {
         renderContext?.onMouseScrolled(scrollX, scrollY);
         return super.mouseScrolled(mouseX, mouseY, scrollX, scrollY)
+    }
+
+    override fun charTyped(codePoint: Char, modifiers: Int): Boolean {
+        return super.charTyped(codePoint, modifiers)
     }
 
     override fun render(gui: GuiGraphics, mouseX: Int, mouseY: Int, tick: Float) {
@@ -109,7 +123,17 @@ class ExampleBlockScreen(menu: ExampleBlockMenu, inv: Inventory, title: Componen
         pose.pushPose();
         pose.scale(1f / scale, 1f / scale, 1f);
 
-        gui.blit(resource!!, 0, 0, 0f, 0f, minecraft!!.window.width, minecraft!!.window.height, minecraft!!.window.width, minecraft!!.window.height)
+        gui.blit(
+            resource!!,
+            0,
+            0,
+            0f,
+            0f,
+            minecraft!!.window.width,
+            minecraft!!.window.height,
+            minecraft!!.window.width,
+            minecraft!!.window.height
+        )
 
         pose.popPose();
     }
