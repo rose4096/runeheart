@@ -1,4 +1,4 @@
-use crate::render::input::{Delta, Input, KeyState, MouseButton, Position};
+use crate::render::input::{Character, Delta, Input, KeyState, MouseButton, Position};
 use crate::screen::ScreenRenderable;
 use jni::JNIEnv;
 use jni::objects::JByteBuffer;
@@ -85,6 +85,7 @@ impl RenderContext {
 
     fn end_draw(&mut self) {
         self.input.reset_scroll();
+        self.input.reset_typed_characters();
         self.fill_pixel_buffer();
     }
 
@@ -132,6 +133,13 @@ impl RenderContext {
         self.input.scroll_delta = Some(Delta {
             x: delta_x,
             y: delta_y,
+        })
+    }
+
+    pub fn on_character_typed(&mut self, code_point: u16, modifiers: i32) {
+        self.input.typed_characters.push_back(Character {
+            code_point,
+            modifiers
         })
     }
 

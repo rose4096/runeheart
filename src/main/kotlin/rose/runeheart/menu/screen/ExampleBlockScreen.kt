@@ -9,9 +9,7 @@ import net.minecraft.client.renderer.texture.DynamicTexture
 import net.minecraft.network.chat.Component
 import net.minecraft.resources.ResourceLocation
 import net.minecraft.world.entity.player.Inventory
-import net.minecraft.world.inventory.Slot
 import org.lwjgl.opengl.GL11
-import rose.runeheart.Native
 import rose.runeheart.RenderContext
 import rose.runeheart.menu.ExampleBlockMenu
 import java.nio.ByteBuffer
@@ -55,6 +53,11 @@ class ExampleBlockScreen(menu: ExampleBlockMenu, inv: Inventory, title: Componen
     }
 
     override fun keyPressed(keyCode: Int, scanCode: Int, modifiers: Int): Boolean {
+        val key = InputConstants.getKey(keyCode, scanCode)
+        if (minecraft!!.options.keyInventory.isActiveAndMatches(key)) {
+            return false;
+        }
+
         renderContext?.onKeyPressed(keyCode, scanCode, modifiers);
         return super.keyPressed(keyCode, scanCode, modifiers)
     }
@@ -80,6 +83,7 @@ class ExampleBlockScreen(menu: ExampleBlockMenu, inv: Inventory, title: Componen
     }
 
     override fun charTyped(codePoint: Char, modifiers: Int): Boolean {
+        renderContext?.onCharacterTyped(codePoint, modifiers);
         return super.charTyped(codePoint, modifiers)
     }
 

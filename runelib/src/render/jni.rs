@@ -1,7 +1,7 @@
 use crate::render::context::RenderContext;
 use jni::JNIEnv;
 use jni::objects::JClass;
-use jni::sys::{jdouble, jint, jlong, jobject};
+use jni::sys::{jchar, jdouble, jint, jlong, jobject};
 use skia_safe::ISize;
 
 #[allow(non_snake_case)]
@@ -119,7 +119,9 @@ pub extern "system" fn Java_rose_runeheart_Native_onCharacterTyped<'local>(
     mut env: JNIEnv<'local>,
     _: JClass<'local>,
     context: jlong,
+    code_point: jchar,
+    modifiers: jint,
 ) {
     let context: &mut RenderContext = RenderContext::from_handle_mut(context);
-    context.on_key_released();
+    context.on_character_typed(code_point, modifiers);
 }

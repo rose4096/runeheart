@@ -69,6 +69,9 @@ object Native {
     external fun onMouseScrolled(context: NativeRenderContextHandle, scrollX: Double, scrollY: Double)
 
     @JvmStatic
+    external fun onCharacterTyped(context: NativeRenderContextHandle, codePoint: Char, modifiers: Int)
+
+    @JvmStatic
     external fun renderExampleBlock(context: NativeRenderContextHandle, mouseX: Int, mouseY: Int, guiScale: Float)
 }
 
@@ -118,7 +121,9 @@ class RenderContext(val width: Int, val height: Int) : AutoCloseable {
         Native.onMouseScrolled(handle, scrollX, scrollY);
     }
 
-    fun onCharacterTyped(character: Char) {}
+    fun onCharacterTyped(codePoint: Char, modifiers: Int) {
+        Native.onCharacterTyped(handle, codePoint, modifiers);
+    }
 
     // TODO: maybe override this and then have the native funciton be provided so like ScreenRenderContext and
     //       make this funciton overridable .

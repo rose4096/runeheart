@@ -1,3 +1,4 @@
+use std::collections::VecDeque;
 use skia_safe::Rect;
 
 #[derive(Default, Debug)]
@@ -24,16 +25,27 @@ pub enum MouseButton {
 }
 
 #[derive(Default, Debug)]
+pub struct Character {
+    pub(crate) code_point: u16,
+    pub(crate) modifiers: i32,
+}
+
+#[derive(Default, Debug)]
 pub struct Input {
     pub mouse_position: Position<i32>,
     pub mouse_button_down: Option<MouseButton>,
     pub scroll_delta: Option<Delta>,
     pub key_state: Option<KeyState>,
+    pub typed_characters: VecDeque<Character>
 }
 
 impl Input {
     pub fn reset_scroll(&mut self) {
         self.scroll_delta = None;
+    }
+
+    pub fn reset_typed_characters(&mut self) {
+        self.typed_characters.clear();
     }
 
     pub fn reset_key_state(&mut self) {
@@ -49,9 +61,9 @@ impl Input {
     }
 
     pub fn is_mouse_hovering(&self, rect: Rect) -> bool {
-        self.mouse_position.x > rect.left as i32
-            && self.mouse_position.x < rect.right as i32
-            && self.mouse_position.y > rect.top as i32
-            && self.mouse_position.y < rect.bottom as i32
+        self.mouse_position.x >= rect.left as i32
+            && self.mouse_position.x <= rect.right as i32
+            && self.mouse_position.y >= rect.top as i32
+            && self.mouse_position.y <= rect.bottom as i32
     }
 }

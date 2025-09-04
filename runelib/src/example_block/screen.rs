@@ -1,5 +1,6 @@
 use crate::render::input::{Input, KeyState, MouseButton};
-use crate::screen::{Font, ScreenRenderable, ScreenRenderableExt};
+use crate::screen::text_input::TextInput;
+use crate::screen::{DrawContext, Font, ScreenRenderable, ScreenRenderableExt};
 use skia_safe::textlayout::FontCollection;
 use skia_safe::{Canvas, Color, ISize, Paint, Rect};
 
@@ -8,6 +9,7 @@ pub struct ExampleBlockScreen {
     editor_rect: Rect,
     editor_size: i32,
     text_box: String,
+    text_input: Option<TextInput>,
 }
 
 impl ScreenRenderable for ExampleBlockScreen {
@@ -18,16 +20,43 @@ impl ScreenRenderable for ExampleBlockScreen {
         screen_size: &ISize,
         font_collection: &FontCollection,
     ) {
+        let context = DrawContext::new(canvas, input, font_collection);
 
-        let textarea = Rect::new(10.0,10.0,110.0,50.0);
-        let mut p =Paint::default();
+        let textarea = Rect::new(10.0, 10.0, 110.0, 50.0);
+        let mut p = Paint::default();
         p.set_color(Color::WHITE);
         canvas.draw_rect(textarea, &p);
 
-        if input.is_mouse_hovering(textarea){
-            if let Some(key_state) = input.key_state{
-                self.text_box+=key_state.;
-            }
+        if !input.typed_characters.is_empty() {
+            println!("{:?}", input.typed_characters);
+        }
+
+        if input.is_mouse_hovering(textarea) {
+            input.typed_characters.iter().for_each(|character| {
+                match std::char::from_u32(character.code_point as u32) {
+                    None => {}
+                    Some(character) => self.text_box.push(character),
+                }
+            })
+        }
+
+        self.draw_text(
+            &context,
+            &self.text_box,
+            (textarea.left(), textarea.top()),
+            &Font::Mono(16.0, Color::BLACK),
+        );
+
+        if self.text_input.is_none() {
+            self.text_input = Some(TextInput::new(
+                (100, 400).into(),
+                Font::Mono(16.0, Color::WHITE),
+                Some(300),
+            ));
+        }
+
+        if let Some(text_input) = &mut self.text_input {
+            text_input.render(canvas, input, screen_size, font_collection);
         }
 
         self.editor_rect = Rect::new(
@@ -45,7 +74,6 @@ impl ScreenRenderable for ExampleBlockScreen {
             ..self.editor_rect
         };
 
-
         if input.is_mouse_hovering(Rect {
             left: bounded_rect.left - 10.0,
             right: bounded_rect.left + 10.0,
@@ -62,11 +90,10 @@ impl ScreenRenderable for ExampleBlockScreen {
         canvas.draw_rect(bounded_rect, &paint);
 
         self.draw_text(
-            canvas,
+            &context,
             "yo whats up -> === !=",
             (screen_size.width / 2, screen_size.height / 2),
-            Font::Mono(32.0, Color::BLACK),
-            font_collection,
+            &Font::Mono(32.0, Color::BLACK),
         );
     }
 }
