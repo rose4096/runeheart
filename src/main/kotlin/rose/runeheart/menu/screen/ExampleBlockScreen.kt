@@ -63,7 +63,7 @@ class ExampleBlockScreen(menu: ExampleBlockMenu, inv: Inventory, title: Componen
     }
 
     override fun keyReleased(keyCode: Int, scanCode: Int, modifiers: Int): Boolean {
-        renderContext?.onKeyReleased()
+        renderContext?.onKeyReleased(keyCode, scanCode, modifiers)
         return super.keyReleased(keyCode, scanCode, modifiers);
     }
 

@@ -1,4 +1,4 @@
-use crate::render::input::{Character, Delta, Input, KeyState, MouseButton, Position};
+use crate::render::input::{Character, Delta, Input, KeyData, KeyState, MouseButton, Position};
 use crate::screen::ScreenRenderable;
 use jni::JNIEnv;
 use jni::objects::JByteBuffer;
@@ -86,6 +86,7 @@ impl RenderContext {
     fn end_draw(&mut self) {
         self.input.reset_scroll();
         self.input.reset_typed_characters();
+        self.input.reset_key_state();
         self.fill_pixel_buffer();
     }
 
@@ -105,15 +106,19 @@ impl RenderContext {
     }
 
     pub fn on_key_pressed(&mut self, key_code: i32, scan_mode: i32, modifiers: i32) {
-        self.input.key_state = Some(KeyState {
+        self.input.key_state.push_back(KeyState::Pressed(KeyData {
             key_code,
             scan_mode,
             modifiers,
-        })
+        }));
     }
 
-    pub fn on_key_released(&mut self) {
-        self.input.reset_key_state();
+    pub fn on_key_released(&mut self, key_code: i32, scan_mode: i32, modifiers: i32) {
+        self.input.key_state.push_back(KeyState::Released(KeyData {
+            key_code,
+            scan_mode,
+            modifiers,
+        }));
     }
 
     pub fn on_mouse_released(&mut self) {

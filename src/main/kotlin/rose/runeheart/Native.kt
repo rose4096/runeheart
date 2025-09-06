@@ -49,7 +49,7 @@ object Native {
     external fun onKeyPressed(context: NativeRenderContextHandle, keyCode: Int, scanCode: Int, modifiers: Int)
 
     @JvmStatic
-    external fun onKeyReleased(context: NativeRenderContextHandle)
+    external fun onKeyReleased(context: NativeRenderContextHandle, keyCode: Int, scanCode: Int, modifiers: Int)
 
     @JvmStatic
     external fun onMousePressed(context: NativeRenderContextHandle, button: Int)
@@ -97,8 +97,8 @@ class RenderContext(val width: Int, val height: Int) : AutoCloseable {
         Native.onKeyPressed(handle, keyCode, scanCode, modifiers);
     }
 
-    fun onKeyReleased() {
-        Native.onKeyReleased(handle);
+    fun onKeyReleased(keyCode: Int, scanCode: Int, modifiers: Int) {
+        Native.onKeyReleased(handle, keyCode, scanCode, modifiers);
     }
 
     fun onMousePressed(button: Int) {

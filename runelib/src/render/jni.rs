@@ -72,9 +72,12 @@ pub extern "system" fn Java_rose_runeheart_Native_onKeyReleased<'local>(
     mut env: JNIEnv<'local>,
     _: JClass<'local>,
     context: jlong,
+    key_code: jint,
+    scan_mode: jint,
+    modifiers: jint,
 ) {
     let context: &mut RenderContext = RenderContext::from_handle_mut(context);
-    context.on_key_released();
+    context.on_key_released(key_code, scan_mode, modifiers);
 }
 
 #[allow(non_snake_case)]

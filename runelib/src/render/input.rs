@@ -2,10 +2,16 @@ use std::collections::VecDeque;
 use skia_safe::Rect;
 
 #[derive(Default, Debug)]
-pub struct KeyState {
+pub struct KeyData {
     pub key_code: i32,
     pub scan_mode: i32,
     pub modifiers: i32,
+}
+
+#[derive(Debug)]
+pub enum KeyState {
+    Pressed(KeyData),
+    Released(KeyData)
 }
 
 #[derive(Default, Debug)]
@@ -35,7 +41,7 @@ pub struct Input {
     pub mouse_position: Position<i32>,
     pub mouse_button_down: Option<MouseButton>,
     pub scroll_delta: Option<Delta>,
-    pub key_state: Option<KeyState>,
+    pub key_state: VecDeque<KeyState>,
     pub typed_characters: VecDeque<Character>
 }
 
@@ -49,7 +55,7 @@ impl Input {
     }
 
     pub fn reset_key_state(&mut self) {
-        self.key_state = None;
+        self.key_state.clear()
     }
 
     pub fn reset_mouse_button(&mut self) {

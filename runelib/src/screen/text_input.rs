@@ -1,4 +1,4 @@
-use crate::render::input::{Input, MouseButton, Position};
+use crate::render::input::{Input, KeyState, MouseButton, Position};
 use crate::screen::{DrawContext, Font, ScreenRenderable, ScreenRenderableExt};
 use skia_safe::textlayout::{FontCollection, ParagraphStyle, RectHeightStyle, RectWidthStyle};
 use skia_safe::{Canvas, Color, ISize, Paint, Point, Rect, Size};
@@ -140,29 +140,37 @@ impl ScreenRenderable for TextInput {
                 .min(self.cursor_pos + input.typed_characters.len());
         }
 
-        if let Some(key) = &input.key_state {
-            const KEY_BACKSPACE: i32 = 259;
-            const KEY_LEFT: i32 = 263;
-            const KEY_RIGHT: i32 = 262;
+        const KEY_BACKSPACE: i32 = 259;
+        const KEY_LEFT: i32 = 263;
+        const KEY_RIGHT: i32 = 262;
 
-            // TODO: represent key press state betetr (tyeps for releas,epress,etc.
-            match key.key_code {
-                KEY_LEFT => {
-                    self.cursor_pos = self.cursor_pos.saturating_sub(1);
-                }
-                KEY_RIGHT => {
-                    self.cursor_pos = self.text.len().min(self.cursor_pos + 1);
-                }
-                KEY_BACKSPACE => {
-                    if !self.text.is_empty()
-                        && let Some(cursor_pos) = self.cursor_pos.checked_sub(1)
-                    {
-                        self.cursor_pos = cursor_pos;
-                        self.text.remove(self.cursor_pos);
+        input.key_state.iter().find(|key| {
+            match key {
+                KeyState::Pressed(key) => {
+                    match key.key_code {
+                        KEY_LEFT => {
+                            self.cursor_pos = self.cursor_pos.saturating_sub(1);
+                            true
+                        }
+                        KEY_RIGHT => {
+                            self.cursor_pos = self.text.len().min(self.cursor_pos + 1);
+                            true
+
+                        }
+                        KEY_BACKSPACE => {
+                            if !self.text.is_empty()
+                                && let Some(cursor_pos) = self.cursor_pos.checked_sub(1)
+                            {
+                                self.cursor_pos = cursor_pos;
+                                self.text.remove(self.cursor_pos);
+                            }
+                            true
+                        }
+                        _ => {false}
                     }
                 }
-                _ => {}
+                KeyState::Released(_) => {false}
             }
-        }
+        });
     }
 }
