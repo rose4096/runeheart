@@ -1,6 +1,7 @@
+use std::ops::Add;
 use crate::render::input::{Input, MouseButton, Position};
 use crate::screen::{DrawContext, Font, ScreenRenderable, ScreenRenderableExt};
-use skia_safe::textlayout::FontCollection;
+use skia_safe::textlayout::{FontCollection, ParagraphStyle, RectHeightStyle, RectWidthStyle};
 use skia_safe::{Canvas, Color, ISize, Paint, Point, Rect, Size};
 
 #[derive(Debug)]
@@ -10,6 +11,7 @@ pub struct TextInput {
     focused: bool,
     font: Font,
     max_width: Option<i32>,
+    cursor_pos: usize,
 }
 
 impl TextInput {
@@ -20,6 +22,7 @@ impl TextInput {
             max_width,
             text: String::default(),
             focused: false,
+            cursor_pos: 0,
         }
     }
 
@@ -43,7 +46,6 @@ impl ScreenRenderable for TextInput {
         paint.set_color(Color::BLACK);
 
         if let Some(height) = self.font.measure_height(font_collection) {
-            println!("HEIGHT:{}", height);
             let rect = Rect {
                 left: self.position.x,
                 top: self.position.y,
@@ -51,8 +53,6 @@ impl ScreenRenderable for TextInput {
                 bottom: self.position.y + height
             };
 
-            println!("rect:{:?}",rect);
-            println!("iimp:{:?}",input.mouse_position);
             if input.is_mouse_hovering(rect) {
                 paint.set_color(Color::LIGHT_GRAY);
 
@@ -64,19 +64,30 @@ impl ScreenRenderable for TextInput {
             }
 
             if self.focused {
-                println!("focused");
-
                 paint.set_color(Color::WHITE);
                 context
                     .canvas
-                    .draw_rect(rect.clone().with_outset((10, 10)), &paint);
+                    .draw_rect(rect.clone().with_outset((2, 2)), &paint);
                 paint.set_color(Color::BLACK);
             }
 
             canvas.draw_rect(rect, &paint);
 
-            // TODO: paragraph builder api with draw_text
-            self.draw_text(&context, &self.text, self.position, &self.font);
+            if !self.focused {
+                let paragraph_style = ParagraphStyle::new().set_max_lines(1).set_ellipsis("...").to_owned();
+                let mut paragraph = self.paragraph(&context, &self.text, &self.font, Some(paragraph_style));
+                paragraph.layout(rect.width());
+                self.draw_paragraph(&context, paragraph, self.position);
+            } else {
+                let paragraph_style = ParagraphStyle::new().set_max_lines(1).to_owned();
+                let mut paragraph = self.paragraph(&context, &self.text, &self.font, Some(paragraph_style));
+                paragraph.layout(rect.width());
+                // TODO:just check textwidth
+
+                let cursor_x = self.position.x;
+
+                self.draw_paragraph(&context, paragraph, (cursor_x, self.position.y));
+            }
         }
 
         if self.focused && !input.typed_characters.is_empty() {
@@ -85,7 +96,30 @@ impl ScreenRenderable for TextInput {
                     None => {}
                     Some(character) => self.text.push(character),
                 }
-            })
+            });
+            self.cursor_pos = self.text.len();
+        }
+
+        if let Some(key) = &input.key_state {
+            const KEY_BACKSPACE: i32 = 259;
+            const KEY_LEFT: i32 = 263;
+            const KEY_RIGHT: i32 = 262;
+
+
+            // TODO: represent key press state betetr (tyeps for releas,epress,etc.
+            match key.key_code {
+                KEY_LEFT => {
+                    self.cursor_pos = 0.max(self.cursor_pos -1);
+                },
+                KEY_RIGHT => {
+                    self.cursor_pos = self.text.len().min(self.cursor_pos + 1);
+                },
+                KEY_BACKSPACE => {
+                    self.text.pop();
+                    self.cursor_pos = self.text.len();
+                },
+                _ => {}
+            }
         }
     }
 }

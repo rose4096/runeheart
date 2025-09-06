@@ -8,7 +8,6 @@ use skia_safe::{Canvas, Color, ISize, Paint, Rect};
 pub struct ExampleBlockScreen {
     editor_rect: Rect,
     editor_size: i32,
-    text_box: String,
     text_input: Option<TextInput>,
 }
 
@@ -21,31 +20,6 @@ impl ScreenRenderable for ExampleBlockScreen {
         font_collection: &FontCollection,
     ) {
         let context = DrawContext::new(canvas, input, font_collection);
-
-        let textarea = Rect::new(10.0, 10.0, 110.0, 50.0);
-        let mut p = Paint::default();
-        p.set_color(Color::WHITE);
-        canvas.draw_rect(textarea, &p);
-
-        if !input.typed_characters.is_empty() {
-            println!("{:?}", input.typed_characters);
-        }
-
-        if input.is_mouse_hovering(textarea) {
-            input.typed_characters.iter().for_each(|character| {
-                match std::char::from_u32(character.code_point as u32) {
-                    None => {}
-                    Some(character) => self.text_box.push(character),
-                }
-            })
-        }
-
-        self.draw_text(
-            &context,
-            &self.text_box,
-            (textarea.left(), textarea.top()),
-            &Font::Mono(16.0, Color::BLACK),
-        );
 
         if self.text_input.is_none() {
             self.text_input = Some(TextInput::new(

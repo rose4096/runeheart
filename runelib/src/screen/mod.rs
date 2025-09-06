@@ -1,7 +1,7 @@
 pub mod text_input;
 
 use crate::render::input::{Input, MouseButton};
-use skia_safe::textlayout::{FontCollection, ParagraphBuilder, ParagraphStyle, TextStyle};
+use skia_safe::textlayout::{FontCollection, Paragraph, ParagraphBuilder, ParagraphStyle, TextStyle};
 use skia_safe::wrapper::PointerWrapper;
 use skia_safe::{Canvas, Color, FontStyle, ISize, Paint, Point, Rect, Size, scalar};
 
@@ -54,8 +54,8 @@ impl<'a> DrawContext<'a> {
 }
 
 pub trait ScreenRenderable {
-    fn draw_text_raw(&self, context: &DrawContext, text: &str, position: Point, font: &Font) {
-        let paragraph_style = ParagraphStyle::new();
+    fn paragraph(&self, context: &DrawContext, text: &str, font: &Font, paragraph_style: Option<ParagraphStyle>) -> Paragraph {
+        let paragraph_style = paragraph_style.unwrap_or_default();
         let mut paragraph_builder =
             ParagraphBuilder::new(&paragraph_style, context.font_collection);
 
@@ -80,9 +80,10 @@ pub trait ScreenRenderable {
         paragraph_builder.push_style(&ts);
         paragraph_builder.add_text(text);
 
-        let mut paragraph = paragraph_builder.build();
-        // TODO: make a prepare_text [returns &mut Paragraph] / draw_text [draws &Paragraph]
-        paragraph.layout(256.0);
+        paragraph_builder.build()
+    }
+
+    fn draw_text_raw(&self, context: &DrawContext, paragraph: Paragraph, position: Point) {
         paragraph.paint(context.canvas, position);
     }
 
@@ -103,7 +104,13 @@ pub trait ScreenRenderableExt: ScreenRenderable {
         position: impl Into<Point>,
         font: &Font,
     ) {
-        self.draw_text_raw(context, text.as_ref(), position.into(), font);
+        let point = position.into();
+        let paragraph = self.paragraph(context, text.as_ref(), font, None);
+        self.draw_text_raw(context, paragraph, point);
+    }
+
+    fn draw_paragraph(&self, context: &DrawContext, paragraph: Paragraph, point: impl Into<Point>) {
+        self.draw_text_raw(context, paragraph, point.into());
     }
 }
 
