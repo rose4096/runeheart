@@ -1,9 +1,8 @@
-use crate::render::input::{Input, KeyState, MouseButton, Position};
+use crate::render::input::{Input, KeyState, MouseButton};
 use crate::screen::{DrawContext, Font, ScreenRenderable, ScreenRenderableExt};
 use skia_safe::textlayout::{FontCollection, ParagraphStyle, RectHeightStyle, RectWidthStyle};
-use skia_safe::{Canvas, Color, ISize, Paint, Point, Rect, Size};
-use std::ops::Add;
-use std::time::SystemTime;
+use skia_safe::{Canvas, Color, ISize, Paint, Point, Rect};
+use std::ops::Range;
 
 #[derive(Debug)]
 pub struct TextInput {
@@ -13,7 +12,7 @@ pub struct TextInput {
     font: Font,
     max_width: Option<i32>,
     cursor_pos: usize,
-    timer: SystemTime,
+    selection_range: Option<Range<usize>>,
 }
 
 impl TextInput {
@@ -25,7 +24,7 @@ impl TextInput {
             text: String::default(),
             focused: false,
             cursor_pos: 0,
-            timer: SystemTime::now(),
+            selection_range: None,
         }
     }
 
@@ -45,6 +44,29 @@ impl TextInput {
         } else {
             0.0
         }
+    }
+
+    fn selection_position(
+        &self,
+        paragraph: &skia_safe::textlayout::Paragraph,
+    ) -> Option<(f32, f32)> {
+        let selection_range = self.selection_range.as_ref()?;
+        let range = if selection_range.start > selection_range.end {
+            selection_range.end..selection_range.start
+        } else {
+            selection_range.start..selection_range.end
+        };
+
+        let utf16_start_pos = self.text[..range.start].encode_utf16().count();
+        let utf16_end_pos = self.text[..range.end].encode_utf16().count();
+
+        let rects = paragraph.get_rects_for_range(
+            utf16_start_pos..utf16_end_pos,
+            RectHeightStyle::Tight,
+            RectWidthStyle::Tight,
+        );
+
+        Some((rects.first()?.rect.left, rects.last()?.rect.right))
     }
 }
 
@@ -109,6 +131,18 @@ impl ScreenRenderable for TextInput {
                 let overflow = (self.position.x + caret_offset) - (self.position.x + rect.width());
                 let shift = if overflow > 0.0 { -overflow } else { 0.0 };
 
+                if let Some((start, end)) = self.selection_position(&paragraph) {
+                    canvas.draw_rect(
+                        Rect::new(
+                            self.position.x + start,
+                            self.position.y,
+                            self.position.x + end,
+                            self.position.y + rect.height(),
+                        ),
+                        Paint::default().set_color(Color::MAGENTA),
+                    );
+                }
+
                 canvas.draw_rect(
                     Rect::new(
                         self.position.x + caret_offset + shift,
@@ -143,34 +177,38 @@ impl ScreenRenderable for TextInput {
         const KEY_BACKSPACE: i32 = 259;
         const KEY_LEFT: i32 = 263;
         const KEY_RIGHT: i32 = 262;
+        const SHIFT_MODIFIER: i32 = 1;
+        const CTRL_MODIFIER: i32 = 2;
+        const ALT_MODIFIER: i32 = 4;
 
-        input.key_state.iter().find(|key| {
-            match key {
-                KeyState::Pressed(key) => {
-                    match key.key_code {
-                        KEY_LEFT => {
-                            self.cursor_pos = self.cursor_pos.saturating_sub(1);
-                            true
-                        }
-                        KEY_RIGHT => {
-                            self.cursor_pos = self.text.len().min(self.cursor_pos + 1);
-                            true
-
-                        }
-                        KEY_BACKSPACE => {
-                            if !self.text.is_empty()
-                                && let Some(cursor_pos) = self.cursor_pos.checked_sub(1)
-                            {
-                                self.cursor_pos = cursor_pos;
-                                self.text.remove(self.cursor_pos);
-                            }
-                            true
-                        }
-                        _ => {false}
+        input.key_state.iter().find(|key| match key {
+            KeyState::Pressed(key) => match key.key_code {
+                KEY_LEFT => {
+                    if key.modifiers == SHIFT_MODIFIER {
+                        self.selection_range = match &self.selection_range {
+                            None => Some(self.cursor_pos.saturating_sub(1)..self.cursor_pos),
+                            Some(rng) => Some(rng.start - 1..rng.end),
+                        };
                     }
+                    self.cursor_pos = self.cursor_pos.saturating_sub(1);
+                    true
                 }
-                KeyState::Released(_) => {false}
-            }
+                KEY_RIGHT => {
+                    self.cursor_pos = self.text.len().min(self.cursor_pos + 1);
+                    true
+                }
+                KEY_BACKSPACE => {
+                    if !self.text.is_empty()
+                        && let Some(cursor_pos) = self.cursor_pos.checked_sub(1)
+                    {
+                        self.cursor_pos = cursor_pos;
+                        self.text.remove(self.cursor_pos);
+                    }
+                    true
+                }
+                _ => false,
+            },
+            KeyState::Released(_) => false,
         });
     }
 }
