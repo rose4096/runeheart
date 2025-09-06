@@ -10,25 +10,16 @@ typealias NativeContextHandle = Long;
 typealias NativeRenderContextHandle = Long;
 
 object Native {
-    var loadedFile: File? = null
-
     init {
-        val resPath = "/natives/runelib.dll"
-        val inStream = Native::class.java.getResourceAsStream(resPath)
-            ?: throw UnsatisfiedLinkError("Native not found in resources: $resPath")
+        val libs = listOf("/natives/runelib.dll", "/natives/librunelib.dylib")
+        val stream = libs.firstNotNullOf { Native::class.java.getResourceAsStream(it) }
 
-        val file = Files.createTempFile("runeheart-", "runelib.dll").toFile()
-
+        val file = Files.createTempFile("runeheart-", "runelib").toFile()
         file.deleteOnExit()
-        inStream.use { input -> file.outputStream().use { input.copyTo(it) } }
 
+        stream.use { input -> file.outputStream().use { input.copyTo(it) } }
 
-        loadedFile = file
-        System.load(loadedFile!!.absolutePath)
-    }
-
-    fun reload() {
-        NativeLibrary.getInstance(loadedFile!!.name).close();
+        System.load(file.absolutePath)
     }
 
     @JvmStatic
