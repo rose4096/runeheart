@@ -12,7 +12,7 @@ pub enum Font {
 }
 
 impl Font {
-    fn measure_height(&self, font_collection: &FontCollection) -> Option<scalar> {
+    fn get_font(&self, font_collection: &FontCollection) -> Option<skia_safe::Font> {
         let mut fc = font_collection.clone();
         // ^^ this sucks. but why is find_typefaces mutable??
 
@@ -26,14 +26,19 @@ impl Font {
         };
 
         let tfs = fc.find_typefaces(families, FontStyle::normal());
-        if let Some(tf) = tfs.first() {
-            let font = skia_safe::Font::from_typeface(tf, *size);
-            let metrics = font.metrics();
-            // maybe use ascent/descent
-            return Some(metrics.1.top.abs() + metrics.1.bottom.abs());
-        }
+        Some(skia_safe::Font::from_typeface(tfs.first()?, *size))
+    }
 
-        None
+    fn measure_text(&self, text: &str, paint: Option<&Paint>, font_collection: &FontCollection) -> Option<(scalar, Rect)> {
+        let font = self.get_font(font_collection)?;
+        Some(font.measure_text(text, paint))
+    }
+
+    fn measure_height(&self, font_collection: &FontCollection) -> Option<scalar> {
+        let font = self.get_font(font_collection)?;
+        let metrics = font.metrics();
+        // maybe use ascent/descent
+        Some(metrics.1.top.abs() + metrics.1.bottom.abs())
     }
 }
 

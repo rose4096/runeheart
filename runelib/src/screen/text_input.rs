@@ -81,10 +81,12 @@ impl ScreenRenderable for TextInput {
             } else {
                 let paragraph_style = ParagraphStyle::new().set_max_lines(1).to_owned();
                 let mut paragraph = self.paragraph(&context, &self.text, &self.font, Some(paragraph_style));
-                paragraph.layout(rect.width());
-                // TODO:just check textwidth
-
-                let cursor_x = self.position.x;
+                paragraph.layout(1_000_000.0);
+                let text_size = self.font.measure_text(&self.text, None, &font_collection).unwrap();
+                let cursor_x =
+                if text_size.0 > rect.width() {
+                    self.position.x - text_size.0 + rect.width()
+                } else { self.position.x };
 
                 self.draw_paragraph(&context, paragraph, (cursor_x, self.position.y));
             }
@@ -104,7 +106,6 @@ impl ScreenRenderable for TextInput {
             const KEY_BACKSPACE: i32 = 259;
             const KEY_LEFT: i32 = 263;
             const KEY_RIGHT: i32 = 262;
-
 
             // TODO: represent key press state betetr (tyeps for releas,epress,etc.
             match key.key_code {
