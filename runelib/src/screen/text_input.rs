@@ -12,6 +12,7 @@ pub struct TextInput {
     font: Font,
     max_width: Option<i32>,
     cursor_pos: usize,
+    scroll_x: f32,       // how far we've scrolled horizontally
 }
 
 impl TextInput {
@@ -23,15 +24,33 @@ impl TextInput {
             text: String::default(),
             focused: false,
             cursor_pos: 0,
+            scroll_x: 0.0
         }
     }
 
     fn text(&self) -> &str {
         &self.text
     }
+
+    fn caret_position(&self, paragraph: &skia_safe::textlayout::Paragraph) -> f32 {
+        let rects = paragraph.get_rects_for_range(
+            0..self.text[..self.cursor_pos].encode_utf16().count(),
+            RectHeightStyle::Tight,
+            RectWidthStyle::Tight,
+        );
+
+        println!("{:?}", rects);
+        if let Some(r) = rects.last() {
+            r.rect.right
+        } else {
+            0.0
+        }
+    }
 }
 
 impl ScreenRenderable for TextInput {
+
+
     fn render(
         &mut self,
         canvas: &Canvas,
@@ -82,13 +101,12 @@ impl ScreenRenderable for TextInput {
                 let paragraph_style = ParagraphStyle::new().set_max_lines(1).to_owned();
                 let mut paragraph = self.paragraph(&context, &self.text, &self.font, Some(paragraph_style));
                 paragraph.layout(1_000_000.0);
-                let text_size = self.font.measure_text(&self.text, None, &font_collection).unwrap();
-                let cursor_x =
-                if text_size.0 > rect.width() {
-                    self.position.x - text_size.0 + rect.width()
-                } else { self.position.x };
-
-                self.draw_paragraph(&context, paragraph, (cursor_x, self.position.y));
+                let caret_x = self.caret_position(&paragraph);
+                if caret_x - self.scroll_x > rect.width() {
+                    self.scroll_x = caret_x - rect.width();
+                }
+                let draw_x = self.position.x - self.scroll_x;
+                self.draw_paragraph(&context, paragraph, (draw_x, self.position.y));
             }
         }
 
