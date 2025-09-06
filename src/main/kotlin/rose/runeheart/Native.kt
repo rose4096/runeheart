@@ -1,23 +1,24 @@
 package rose.runeheart
 
-import com.sun.jna.NativeLibrary
 import rose.runeheart.Runeheart.LOGGER
 import java.io.File
 import java.nio.ByteBuffer
-import java.nio.file.Files
+import kotlin.io.path.createTempFile
 
 typealias NativeContextHandle = Long;
 typealias NativeRenderContextHandle = Long;
 
 object Native {
     init {
-        val libs = listOf("/natives/runelib.dll", "/natives/librunelib.dylib")
-        val stream = libs.firstNotNullOf { Native::class.java.getResourceAsStream(it) }
+        val (path, stream) = listOf(
+            "/natives/runelib.dll", "/natives/librunelib.dylib"
+        ).asSequence().mapNotNull { p -> Native::class.java.getResourceAsStream(p)?.let { p to it } }.first()
 
-        val file = Files.createTempFile("runeheart-", "runelib").toFile()
-        file.deleteOnExit()
+        val suffix = path.substringAfterLast('.', "")
+        val file = File(System.getProperty("java.io.tmpdir"), "runeheart-runelib.$suffix")
 
         stream.use { input -> file.outputStream().use { input.copyTo(it) } }
+        file.deleteOnExit()
 
         System.load(file.absolutePath)
     }

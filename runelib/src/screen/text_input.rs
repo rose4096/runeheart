@@ -1,8 +1,9 @@
-use std::ops::Add;
 use crate::render::input::{Input, MouseButton, Position};
 use crate::screen::{DrawContext, Font, ScreenRenderable, ScreenRenderableExt};
 use skia_safe::textlayout::{FontCollection, ParagraphStyle, RectHeightStyle, RectWidthStyle};
 use skia_safe::{Canvas, Color, ISize, Paint, Point, Rect, Size};
+use std::ops::Add;
+use std::time::SystemTime;
 
 #[derive(Debug)]
 pub struct TextInput {
@@ -12,7 +13,7 @@ pub struct TextInput {
     font: Font,
     max_width: Option<i32>,
     cursor_pos: usize,
-    scroll_x: f32,       // how far we've scrolled horizontally
+    timer: SystemTime,
 }
 
 impl TextInput {
@@ -24,7 +25,7 @@ impl TextInput {
             text: String::default(),
             focused: false,
             cursor_pos: 0,
-            scroll_x: 0.0
+            timer: SystemTime::now(),
         }
     }
 
@@ -39,7 +40,6 @@ impl TextInput {
             RectWidthStyle::Tight,
         );
 
-        println!("{:?}", rects);
         if let Some(r) = rects.last() {
             r.rect.right
         } else {
@@ -49,8 +49,6 @@ impl TextInput {
 }
 
 impl ScreenRenderable for TextInput {
-
-
     fn render(
         &mut self,
         canvas: &Canvas,
@@ -69,7 +67,7 @@ impl ScreenRenderable for TextInput {
                 left: self.position.x,
                 top: self.position.y,
                 right: self.position.x + self.max_width.unwrap_or_default() as f32,
-                bottom: self.position.y + height
+                bottom: self.position.y + height,
             };
 
             if input.is_mouse_hovering(rect) {
@@ -93,20 +91,39 @@ impl ScreenRenderable for TextInput {
             canvas.draw_rect(rect, &paint);
 
             if !self.focused {
-                let paragraph_style = ParagraphStyle::new().set_max_lines(1).set_ellipsis("...").to_owned();
-                let mut paragraph = self.paragraph(&context, &self.text, &self.font, Some(paragraph_style));
+                let paragraph_style = ParagraphStyle::new()
+                    .set_max_lines(1)
+                    .set_ellipsis("...")
+                    .to_owned();
+                let mut paragraph =
+                    self.paragraph(&context, &self.text, &self.font, Some(paragraph_style));
                 paragraph.layout(rect.width());
                 self.draw_paragraph(&context, paragraph, self.position);
             } else {
                 let paragraph_style = ParagraphStyle::new().set_max_lines(1).to_owned();
-                let mut paragraph = self.paragraph(&context, &self.text, &self.font, Some(paragraph_style));
+                let mut paragraph =
+                    self.paragraph(&context, &self.text, &self.font, Some(paragraph_style));
                 paragraph.layout(1_000_000.0);
-                let caret_x = self.caret_position(&paragraph);
-                if caret_x - self.scroll_x > rect.width() {
-                    self.scroll_x = caret_x - rect.width();
-                }
-                let draw_x = self.position.x - self.scroll_x;
-                self.draw_paragraph(&context, paragraph, (draw_x, self.position.y));
+
+                let caret_offset = self.caret_position(&paragraph);
+                let overflow = (self.position.x + caret_offset) - (self.position.x + rect.width());
+                let shift = if overflow > 0.0 { -overflow } else { 0.0 };
+
+                canvas.draw_rect(
+                    Rect::new(
+                        self.position.x + caret_offset + shift,
+                        self.position.y,
+                        self.position.x + caret_offset + 10.0 + shift,
+                        self.position.y + rect.height(),
+                    ),
+                    Paint::default().set_color(Color::YELLOW),
+                );
+
+                self.draw_paragraph(
+                    &context,
+                    paragraph,
+                    (self.position.x + shift, self.position.y),
+                );
             }
         }
 
@@ -114,10 +131,13 @@ impl ScreenRenderable for TextInput {
             input.typed_characters.iter().for_each(|character| {
                 match std::char::from_u32(character.code_point as u32) {
                     None => {}
-                    Some(character) => self.text.push(character),
+                    Some(character) => self.text.insert(self.cursor_pos, character),
                 }
             });
-            self.cursor_pos = self.text.len();
+            self.cursor_pos = self
+                .text
+                .len()
+                .min(self.cursor_pos + input.typed_characters.len());
         }
 
         if let Some(key) = &input.key_state {
@@ -128,15 +148,19 @@ impl ScreenRenderable for TextInput {
             // TODO: represent key press state betetr (tyeps for releas,epress,etc.
             match key.key_code {
                 KEY_LEFT => {
-                    self.cursor_pos = 0.max(self.cursor_pos -1);
-                },
+                    self.cursor_pos = self.cursor_pos.saturating_sub(1);
+                }
                 KEY_RIGHT => {
                     self.cursor_pos = self.text.len().min(self.cursor_pos + 1);
-                },
+                }
                 KEY_BACKSPACE => {
-                    self.text.pop();
-                    self.cursor_pos = self.text.len();
-                },
+                    if !self.text.is_empty()
+                        && let Some(cursor_pos) = self.cursor_pos.checked_sub(1)
+                    {
+                        self.cursor_pos = cursor_pos;
+                        self.text.remove(self.cursor_pos);
+                    }
+                }
                 _ => {}
             }
         }
