@@ -35,15 +35,14 @@ class ExampleBlockEntity(pos: BlockPos, state: BlockState) :
         fun tick(level: Level, pos: BlockPos, state: BlockState, blockEntity: ExampleBlockEntity) {
             if (level.isClientSide) return;
 
-//            if (blockEntity.scripts.isEmpty()) {
-//                blockEntity.scripts["rune"] = ScriptContext(
-//                    """
-//                    pub fn tick() {
-//                        println!("hello from tick!");
-//                    }
-//                    """
-//                )
-//            }
+            if (blockEntity.scripts.isEmpty()) {
+                blockEntity.scripts["rune"] = ScriptContext(
+                    """
+                    pub fn tick() {
+                    }
+                    """
+                )
+            }
 
             val itemHandlers = blockEntity.getSurroundingBlockEntities(level, pos).filter {
                 it.entity !== null && level.getCapability(
