@@ -5,6 +5,41 @@ use skia_safe::{Canvas, Color, ISize, Paint, Point, Rect};
 use std::ops::Range;
 
 #[derive(Debug)]
+pub struct TextSelection {
+    anchor: usize,
+    range: Range<usize>,
+}
+
+impl TextSelection {
+    pub fn new(anchor: usize) -> Self {
+        Self {
+            anchor,
+            range: anchor..anchor,
+        }
+    }
+
+    pub fn with_start(mut self, start: usize) -> Self {
+        self.range = start..self.anchor;
+        self
+    }
+
+    pub fn with_end(mut self, end: usize) -> Self {
+        self.range = self.anchor..end;
+        self
+    }
+
+    pub fn set_end(&mut self, end: usize) -> &mut Self {
+        self.range.end = end;
+        self
+    }
+
+    pub fn set_start(&mut self, start: usize) -> &mut Self {
+        self.range.start = start;
+        self
+    }
+}
+
+#[derive(Debug)]
 pub struct TextInput {
     position: Point,
     text: String,
@@ -12,7 +47,7 @@ pub struct TextInput {
     font: Font,
     max_width: Option<i32>,
     cursor_pos: usize,
-    selection_range: Option<Range<usize>>,
+    selection_range: Option<TextSelection>,
 }
 
 impl TextInput {
@@ -39,11 +74,7 @@ impl TextInput {
             RectWidthStyle::Tight,
         );
 
-        if let Some(r) = rects.last() {
-            r.rect.right
-        } else {
-            0.0
-        }
+        rects.last().map_or(0.0, |x| x.rect.right)
     }
 
     fn selection_position(
@@ -51,11 +82,15 @@ impl TextInput {
         paragraph: &skia_safe::textlayout::Paragraph,
     ) -> Option<(f32, f32)> {
         let selection_range = self.selection_range.as_ref()?;
-        let range = if selection_range.start > selection_range.end {
-            selection_range.end..selection_range.start
+        let range = if selection_range.range.start > selection_range.range.end {
+            selection_range.range.end..selection_range.range.start
         } else {
-            selection_range.start..selection_range.end
+            selection_range.range.start..selection_range.range.end
         };
+
+        if range.start > self.text.len() || range.end > self.text.len() {
+            return None;
+        }
 
         let utf16_start_pos = self.text[..range.start].encode_utf16().count();
         let utf16_end_pos = self.text[..range.end].encode_utf16().count();
@@ -97,6 +132,7 @@ impl ScreenRenderable for TextInput {
 
                 if input.is_mouse_down(MouseButton::Left) {
                     self.focused = true;
+                    self.cursor_pos = self.text.len();
                 }
             } else if input.is_mouse_down(MouseButton::Left) {
                 self.focused = false;
@@ -147,7 +183,7 @@ impl ScreenRenderable for TextInput {
                     Rect::new(
                         self.position.x + caret_offset + shift,
                         self.position.y,
-                        self.position.x + caret_offset + 10.0 + shift,
+                        self.position.x + caret_offset + 1.0 + shift,
                         self.position.y + rect.height(),
                     ),
                     Paint::default().set_color(Color::YELLOW),
@@ -162,12 +198,12 @@ impl ScreenRenderable for TextInput {
         }
 
         if self.focused && !input.typed_characters.is_empty() {
-            input.typed_characters.iter().for_each(|character| {
-                match std::char::from_u32(character.code_point as u32) {
-                    None => {}
-                    Some(character) => self.text.insert(self.cursor_pos, character),
-                }
-            });
+            input
+                .typed_characters
+                .iter()
+                .filter_map(|character| std::char::from_u32(character.code_point as u32))
+                .for_each(|ch| self.text.insert(self.cursor_pos, ch));
+
             self.cursor_pos = self
                 .text
                 .len()
@@ -181,34 +217,56 @@ impl ScreenRenderable for TextInput {
         const CTRL_MODIFIER: i32 = 2;
         const ALT_MODIFIER: i32 = 4;
 
-        input.key_state.iter().find(|key| match key {
-            KeyState::Pressed(key) => match key.key_code {
-                KEY_LEFT => {
-                    if key.modifiers == SHIFT_MODIFIER {
-                        self.selection_range = match &self.selection_range {
-                            None => Some(self.cursor_pos.saturating_sub(1)..self.cursor_pos),
-                            Some(rng) => Some(rng.start - 1..rng.end),
-                        };
+        input.key_state.iter().find(|key| 'out: {
+            match key {
+                KeyState::Pressed(key) => match key.key_code {
+                    KEY_LEFT => {
+                        if key.modifiers == SHIFT_MODIFIER {
+                            let start = self.cursor_pos.saturating_sub(1);
+                            let selection = self.selection_range.get_or_insert_with(|| {
+                                TextSelection::new(self.cursor_pos).with_start(start)
+                            });
+                            if selection.range.end > selection.anchor {
+                                selection.set_end(selection.range.end - 1);
+                            } else {
+                                selection.set_start(start);
+                            }
+                        } else {
+                            self.selection_range = None;
+                        }
+
+                        self.cursor_pos = self.cursor_pos.saturating_sub(1);
                     }
-                    self.cursor_pos = self.cursor_pos.saturating_sub(1);
-                    true
-                }
-                KEY_RIGHT => {
-                    self.cursor_pos = self.text.len().min(self.cursor_pos + 1);
-                    true
-                }
-                KEY_BACKSPACE => {
-                    if !self.text.is_empty()
-                        && let Some(cursor_pos) = self.cursor_pos.checked_sub(1)
-                    {
-                        self.cursor_pos = cursor_pos;
-                        self.text.remove(self.cursor_pos);
+                    KEY_RIGHT => {
+                        if key.modifiers == SHIFT_MODIFIER {
+                            let end = self.text.len().min(self.cursor_pos + 1);
+                            let selection = self.selection_range.get_or_insert_with(|| {
+                                TextSelection::new(self.cursor_pos).with_end(end)
+                            });
+                            if selection.range.start < selection.anchor {
+                                selection.set_start(selection.range.start + 1);
+                            } else {
+                                selection.set_end(end);
+                            }
+                        } else {
+                            self.selection_range = None;
+                        }
+
+                        self.cursor_pos = self.text.len().min(self.cursor_pos + 1);
                     }
-                    true
-                }
-                _ => false,
-            },
-            KeyState::Released(_) => false,
+                    KEY_BACKSPACE => {
+                        if !self.text.is_empty()
+                            && let Some(cursor_pos) = self.cursor_pos.checked_sub(1)
+                        {
+                            self.cursor_pos = cursor_pos;
+                            self.text.remove(self.cursor_pos);
+                        }
+                    }
+                    _ => break 'out false,
+                },
+                KeyState::Released(_) => break 'out false,
+            }
+            true
         });
     }
 }
