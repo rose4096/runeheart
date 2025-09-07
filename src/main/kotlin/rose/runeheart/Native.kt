@@ -68,7 +68,6 @@ object Native {
 }
 
 
-// TODO: use this instead of a global render context handle
 class RenderContext(val width: Int, val height: Int) : AutoCloseable {
     var handle: NativeRenderContextHandle = 0;
 

@@ -49,6 +49,7 @@ class ExampleBlockScreen(menu: ExampleBlockMenu, inv: Inventory, title: Componen
     }
 
     override fun renderBg(gui: GuiGraphics, tick: Float, mouseX: Int, mouseY: Int) {
+        // vvv bro this drops 300 fps ??
         this.renderBlurredBackground(tick)
     }
 

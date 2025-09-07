@@ -5,6 +5,14 @@ use skia_safe::{Canvas, Color, ISize, Paint, Point, Rect};
 use std::ops::Range;
 
 #[derive(Debug)]
+pub enum Direction {
+    Left,
+    Right,
+    Up,
+    Down,
+}
+
+#[derive(Debug)]
 pub struct TextSelection {
     anchor: usize,
     range: Range<usize>,
@@ -37,6 +45,46 @@ impl TextSelection {
         self.range.start = start;
         self
     }
+
+    pub fn shift(&mut self, direction: Direction, dest: usize) {
+        match direction {
+            Direction::Left => {
+                if self.range.end > self.anchor {
+                    self.set_end(self.range.end - 1);
+                } else {
+                    self.set_start(dest);
+                }
+            }
+            Direction::Right => {
+                if self.range.start < self.anchor {
+                    self.set_start(self.range.start + 1);
+                } else {
+                    self.set_end(dest);
+                }
+            }
+            _ => {}
+        }
+    }
+}
+
+trait OptionTextSelectionExt {
+    fn select(&mut self, direction: Direction, cursor: usize, destination: usize);
+}
+
+impl OptionTextSelectionExt for Option<TextSelection> {
+    fn select(&mut self, direction: Direction, cursor: usize, destination: usize) {
+        match direction {
+            Direction::Left => {
+                self.get_or_insert_with(|| TextSelection::new(cursor).with_start(destination))
+                    .shift(direction, destination);
+            }
+            Direction::Right => {
+                self.get_or_insert_with(|| TextSelection::new(cursor).with_end(destination))
+                    .shift(direction, destination);
+            }
+            _ => {}
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -47,7 +95,7 @@ pub struct TextInput {
     font: Font,
     max_width: Option<i32>,
     cursor_pos: usize,
-    selection_range: Option<TextSelection>,
+    selected_text: Option<TextSelection>,
 }
 
 impl TextInput {
@@ -59,7 +107,7 @@ impl TextInput {
             text: String::default(),
             focused: false,
             cursor_pos: 0,
-            selection_range: None,
+            selected_text: None,
         }
     }
 
@@ -81,7 +129,7 @@ impl TextInput {
         &self,
         paragraph: &skia_safe::textlayout::Paragraph,
     ) -> Option<(f32, f32)> {
-        let selection_range = self.selection_range.as_ref()?;
+        let selection_range = self.selected_text.as_ref()?;
         let range = if selection_range.range.start > selection_range.range.end {
             selection_range.range.end..selection_range.range.start
         } else {
@@ -222,34 +270,26 @@ impl ScreenRenderable for TextInput {
                 KeyState::Pressed(key) => match key.key_code {
                     KEY_LEFT => {
                         if key.modifiers == SHIFT_MODIFIER {
-                            let start = self.cursor_pos.saturating_sub(1);
-                            let selection = self.selection_range.get_or_insert_with(|| {
-                                TextSelection::new(self.cursor_pos).with_start(start)
-                            });
-                            if selection.range.end > selection.anchor {
-                                selection.set_end(selection.range.end - 1);
-                            } else {
-                                selection.set_start(start);
-                            }
+                            self.selected_text.select(
+                                Direction::Left,
+                                self.cursor_pos,
+                                self.cursor_pos.saturating_sub(1),
+                            );
                         } else {
-                            self.selection_range = None;
+                            self.selected_text = None;
                         }
 
                         self.cursor_pos = self.cursor_pos.saturating_sub(1);
                     }
                     KEY_RIGHT => {
                         if key.modifiers == SHIFT_MODIFIER {
-                            let end = self.text.len().min(self.cursor_pos + 1);
-                            let selection = self.selection_range.get_or_insert_with(|| {
-                                TextSelection::new(self.cursor_pos).with_end(end)
-                            });
-                            if selection.range.start < selection.anchor {
-                                selection.set_start(selection.range.start + 1);
-                            } else {
-                                selection.set_end(end);
-                            }
+                            self.selected_text.select(
+                                Direction::Right,
+                                self.cursor_pos,
+                                self.text.len().min(self.cursor_pos + 1),
+                            );
                         } else {
-                            self.selection_range = None;
+                            self.selected_text = None;
                         }
 
                         self.cursor_pos = self.text.len().min(self.cursor_pos + 1);
