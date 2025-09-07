@@ -7,7 +7,7 @@ use std::ops::Range;
 #[derive(Debug)]
 pub enum Direction {
     Left,
-    Right,
+    Right { limit: usize },
     Up,
     Down,
 }
@@ -26,64 +26,103 @@ impl TextSelection {
         }
     }
 
-    pub fn with_start(mut self, start: usize) -> Self {
-        self.range = start..self.anchor;
-        self
-    }
-
-    pub fn with_end(mut self, end: usize) -> Self {
-        self.range = self.anchor..end;
-        self
-    }
-
-    pub fn set_end(&mut self, end: usize) -> &mut Self {
+    fn set_end(&mut self, end: usize) -> &mut Self {
         self.range.end = end;
         self
     }
 
-    pub fn set_start(&mut self, start: usize) -> &mut Self {
+    fn set_start(&mut self, start: usize) -> &mut Self {
         self.range.start = start;
         self
     }
 
-    pub fn shift(&mut self, direction: Direction, dest: usize) {
+    pub fn select(&mut self, direction: Direction, dest: usize) {
         match direction {
             Direction::Left => {
                 if self.range.end > self.anchor {
-                    self.set_end(self.range.end - 1);
+                    self.set_end(dest);
                 } else {
                     self.set_start(dest);
                 }
             }
-            Direction::Right => {
+            Direction::Right { .. } => {
                 if self.range.start < self.anchor {
-                    self.set_start(self.range.start + 1);
+                    self.set_start(dest);
                 } else {
                     self.set_end(dest);
                 }
             }
-            _ => {}
+            Direction::Up => {}
+            Direction::Down => {}
         }
     }
 }
 
-trait OptionTextSelectionExt {
-    fn select(&mut self, direction: Direction, cursor: usize, destination: usize);
+#[derive(Debug)]
+pub struct Cursor {
+    selection: Option<TextSelection>,
+    position: usize,
 }
 
-impl OptionTextSelectionExt for Option<TextSelection> {
-    fn select(&mut self, direction: Direction, cursor: usize, destination: usize) {
+impl Cursor {
+    pub fn new() -> Self {
+        Self {
+            selection: None,
+            position: 0,
+        }
+    }
+
+    fn selection(&self) -> &Option<TextSelection> {
+        &self.selection
+    }
+
+    fn select_to(&mut self, direction: Direction, destination: usize) {
+        let selection = self
+            .selection
+            .get_or_insert_with(|| TextSelection::new(self.position));
+        selection.select(direction, destination);
+    }
+
+    fn jump_direction(&mut self, direction: Direction) -> &mut Self {
         match direction {
             Direction::Left => {
-                self.get_or_insert_with(|| TextSelection::new(cursor).with_start(destination))
-                    .shift(direction, destination);
+                self.position = 0;
             }
-            Direction::Right => {
-                self.get_or_insert_with(|| TextSelection::new(cursor).with_end(destination))
-                    .shift(direction, destination);
+            Direction::Right { limit } => {
+                self.position = limit;
             }
-            _ => {}
+            Direction::Up => {
+                todo!()
+            }
+            Direction::Down => {
+                todo!()
+            }
         }
+        self
+    }
+
+    fn move_cursor(&mut self, direction: Direction) -> &mut Self {
+        match direction {
+            Direction::Left => {
+                self.position = self.position.saturating_sub(1);
+            }
+            Direction::Right { limit } => {
+                self.position = (self.position + 1).min(limit);
+            }
+            Direction::Up => {
+                todo!()
+            }
+            Direction::Down => {
+                todo!()
+            }
+        }
+
+        self
+    }
+
+    fn clear_selection(&mut self) -> &mut Self {
+        self.selection = None;
+        self
     }
 }
 
@@ -94,8 +133,7 @@ pub struct TextInput {
     focused: bool,
     font: Font,
     max_width: Option<i32>,
-    cursor_pos: usize,
-    selected_text: Option<TextSelection>,
+    cursor: Cursor,
 }
 
 impl TextInput {
@@ -106,8 +144,7 @@ impl TextInput {
             max_width,
             text: String::default(),
             focused: false,
-            cursor_pos: 0,
-            selected_text: None,
+            cursor: Cursor::new(),
         }
     }
 
@@ -117,7 +154,7 @@ impl TextInput {
 
     fn caret_position(&self, paragraph: &skia_safe::textlayout::Paragraph) -> f32 {
         let rects = paragraph.get_rects_for_range(
-            0..self.text[..self.cursor_pos].encode_utf16().count(),
+            0..self.text[..self.cursor.position].encode_utf16().count(),
             RectHeightStyle::Tight,
             RectWidthStyle::Tight,
         );
@@ -129,7 +166,7 @@ impl TextInput {
         &self,
         paragraph: &skia_safe::textlayout::Paragraph,
     ) -> Option<(f32, f32)> {
-        let selection_range = self.selected_text.as_ref()?;
+        let selection_range = self.cursor.selection.as_ref()?;
         let range = if selection_range.range.start > selection_range.range.end {
             selection_range.range.end..selection_range.range.start
         } else {
@@ -180,7 +217,7 @@ impl ScreenRenderable for TextInput {
 
                 if input.is_mouse_down(MouseButton::Left) {
                     self.focused = true;
-                    self.cursor_pos = self.text.len();
+                    self.cursor.position = self.text.len();
                 }
             } else if input.is_mouse_down(MouseButton::Left) {
                 self.focused = false;
@@ -250,12 +287,12 @@ impl ScreenRenderable for TextInput {
                 .typed_characters
                 .iter()
                 .filter_map(|character| std::char::from_u32(character.code_point as u32))
-                .for_each(|ch| self.text.insert(self.cursor_pos, ch));
+                .for_each(|ch| self.text.insert(self.cursor.position, ch));
 
-            self.cursor_pos = self
+            self.cursor.position = self
                 .text
                 .len()
-                .min(self.cursor_pos + input.typed_characters.len());
+                .min(self.cursor.position + input.typed_characters.len());
         }
 
         const KEY_BACKSPACE: i32 = 259;
@@ -263,43 +300,80 @@ impl ScreenRenderable for TextInput {
         const KEY_RIGHT: i32 = 262;
         const SHIFT_MODIFIER: i32 = 1;
         const CTRL_MODIFIER: i32 = 2;
+        const CTRL_SHIFT_MODIFIER: i32 = 3;
         const ALT_MODIFIER: i32 = 4;
 
+        if !input.key_state.is_empty() {
+            println!("{:?}", input.key_state);
+        }
         input.key_state.iter().find(|key| 'out: {
             match key {
                 KeyState::Pressed(key) => match key.key_code {
-                    KEY_LEFT => {
-                        if key.modifiers == SHIFT_MODIFIER {
-                            self.selected_text.select(
-                                Direction::Left,
-                                self.cursor_pos,
-                                self.cursor_pos.saturating_sub(1),
-                            );
-                        } else {
-                            self.selected_text = None;
+                    // TODO: match on key_right or key_left to craete Direction and go from there.
+                    //       and then also have the jump_direction optionally stop on breakpoints (spcaes,puncutation,words,etc.)
+                    KEY_LEFT => match key.modifiers {
+                        SHIFT_MODIFIER => {
+                            self.cursor
+                                .select_to(Direction::Left, self.cursor.position.saturating_sub(1));
+                            self.cursor.move_cursor(Direction::Left);
                         }
-
-                        self.cursor_pos = self.cursor_pos.saturating_sub(1);
-                    }
-                    KEY_RIGHT => {
-                        if key.modifiers == SHIFT_MODIFIER {
-                            self.selected_text.select(
-                                Direction::Right,
-                                self.cursor_pos,
-                                self.text.len().min(self.cursor_pos + 1),
-                            );
-                        } else {
-                            self.selected_text = None;
+                        CTRL_MODIFIER => {
+                            self.cursor
+                                .jump_direction(Direction::Left)
+                                .clear_selection();
                         }
-
-                        self.cursor_pos = self.text.len().min(self.cursor_pos + 1);
-                    }
+                        CTRL_SHIFT_MODIFIER => {
+                            self.cursor.select_to(Direction::Left, 0);
+                            self.cursor.jump_direction(Direction::Left);
+                        }
+                        _ => {
+                            self.cursor.move_cursor(Direction::Left).clear_selection();
+                        }
+                    },
+                    KEY_RIGHT => match key.modifiers {
+                        SHIFT_MODIFIER => {
+                            self.cursor.select_to(
+                                Direction::Right {
+                                    limit: self.text.len(),
+                                },
+                                self.cursor.position + 1,
+                            );
+                            self.cursor.move_cursor(Direction::Right {
+                                limit: self.text.len(),
+                            });
+                        }
+                        CTRL_MODIFIER => {
+                            self.cursor
+                                .jump_direction(Direction::Right {
+                                    limit: self.text.len(),
+                                })
+                                .clear_selection();
+                        }
+                        CTRL_SHIFT_MODIFIER => {
+                            self.cursor.select_to(
+                                Direction::Right {
+                                    limit: self.text.len(),
+                                },
+                                self.text.len(),
+                            );
+                            self.cursor.jump_direction(Direction::Right {
+                                limit: self.text.len(),
+                            });
+                        }
+                        _ => {
+                            self.cursor
+                                .move_cursor(Direction::Right {
+                                    limit: self.text.len(),
+                                })
+                                .clear_selection();
+                        }
+                    },
                     KEY_BACKSPACE => {
                         if !self.text.is_empty()
-                            && let Some(cursor_pos) = self.cursor_pos.checked_sub(1)
+                            && let Some(cursor_pos) = self.cursor.position.checked_sub(1)
                         {
-                            self.cursor_pos = cursor_pos;
-                            self.text.remove(self.cursor_pos);
+                            self.cursor.position = cursor_pos;
+                            self.text.remove(self.cursor.position);
                         }
                     }
                     _ => break 'out false,
