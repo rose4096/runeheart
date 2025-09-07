@@ -170,9 +170,9 @@ impl ScreenRenderable for TextInput {
                 if let Some((start, end)) = self.selection_position(&paragraph) {
                     canvas.draw_rect(
                         Rect::new(
-                            self.position.x + start,
+                            self.position.x + start + shift,
                             self.position.y,
-                            self.position.x + end,
+                            self.position.x + end + shift,
                             self.position.y + rect.height(),
                         ),
                         Paint::default().set_color(Color::MAGENTA),
