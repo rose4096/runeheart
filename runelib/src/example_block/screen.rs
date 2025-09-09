@@ -9,6 +9,8 @@ pub struct ExampleBlockScreen {
     editor_rect: Rect,
     editor_size: i32,
     text_input: Option<TextInput>,
+
+    // TODO: create interpreter window + editor window + file list window
 }
 
 impl ScreenRenderable for ExampleBlockScreen {

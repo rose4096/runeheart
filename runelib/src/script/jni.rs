@@ -48,11 +48,8 @@ pub extern "system" fn Java_rose_runeheart_Native_tick<'local>(
     context: jlong,
 ) {
     let context = RuneheartContext::from_handle_mut(context);
-    match context.callback_tick() {
-        Err(err) => {
-            env.throw_new("java/lang/RuntimeException", format!("{:?}", err))
-                .expect("failed to throw runtime exception?");
-        }
-        _ => {}
+    if let Err(err) = context.callback_tick() {
+        env.throw_new("java/lang/RuntimeException", format!("{:?}", err))
+            .expect("failed to throw runtime exception?");
     }
 }

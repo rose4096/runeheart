@@ -39,17 +39,22 @@ class ExampleBlockEntity(pos: BlockPos, state: BlockState) :
                 blockEntity.scripts["rune"] = ScriptContext(
                     """
                     pub fn tick() {
+                        
                     }
                     """
                 )
             }
 
-            val itemHandlers = blockEntity.getSurroundingBlockEntities(level, pos).filter {
-                it.entity !== null && level.getCapability(
-                    Capabilities.ItemHandler.BLOCK,
-                    it.entity.blockPos,
-                    it.side.opposite
-                ) !== null
+            val itemHandlers = blockEntity.getSurroundingBlockEntities(level, pos).mapNotNull {
+                if (it.entity == null) return@mapNotNull null
+
+                Pair(
+                    it.entity, level.getCapability(
+                        Capabilities.ItemHandler.BLOCK,
+                        it.entity.blockPos,
+                        it.side.opposite
+                    )
+                )
             }
 
 //            blockEntity.scripts["rune"]?.let {
