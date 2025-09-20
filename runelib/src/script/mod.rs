@@ -1,3 +1,3 @@
 mod jni;
 mod context;
-mod rune_module;
+pub mod rune_module;

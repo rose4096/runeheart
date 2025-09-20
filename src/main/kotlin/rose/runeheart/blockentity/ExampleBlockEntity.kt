@@ -31,6 +31,8 @@ class ExampleBlockEntity(pos: BlockPos, state: BlockState) :
         }
     }
 
+    fun test_get_data(): Int = 420
+
     companion object {
         fun tick(level: Level, pos: BlockPos, state: BlockState, blockEntity: ExampleBlockEntity) {
             if (level.isClientSide) return;
@@ -38,8 +40,9 @@ class ExampleBlockEntity(pos: BlockPos, state: BlockState) :
             if (blockEntity.scripts.isEmpty()) {
                 blockEntity.scripts["rune"] = ScriptContext(
                     """
-                    pub fn tick() {
-                        
+                    pub fn tick(ctx) {
+                        let test = ctx.get_block_entities(rune::BlockEntityTarget::Single);
+                        dbg!(test)
                     }
                     """
                 )
@@ -48,18 +51,20 @@ class ExampleBlockEntity(pos: BlockPos, state: BlockState) :
             val itemHandlers = blockEntity.getSurroundingBlockEntities(level, pos).mapNotNull {
                 if (it.entity == null) return@mapNotNull null
 
-                Pair(
-                    it.entity, level.getCapability(
-                        Capabilities.ItemHandler.BLOCK,
-                        it.entity.blockPos,
-                        it.side.opposite
-                    )
+                level.getCapability(
+                    Capabilities.ItemHandler.BLOCK,
+                    it.entity.blockPos,
+                    it.side.opposite
                 )
             }
 
-//            blockEntity.scripts["rune"]?.let {
-//                Native.tick(it.handle)
+//            itemHandlers.forEach {
+//                it.insertItem()
 //            }
+
+            blockEntity.scripts["rune"]?.let {
+                Native.tick(it.handle, blockEntity)
+            }
         }
     }
 

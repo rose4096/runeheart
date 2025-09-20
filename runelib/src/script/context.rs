@@ -1,11 +1,18 @@
+use crate::script::context::RuneheartError::{
+    EmptyScript, RuneAllocError, RuneBuildError, RuneContextError, RuneDiagnosticError,
+    RuneEmitError,
+};
+use crate::script::context::RuneheartExecutionError::RuneVmError;
 use jni::sys::jlong;
 use rune::diagnostics::EmitError;
 use rune::runtime::VmError;
 use rune::termcolor::Buffer;
-use rune::{BuildError, Context, ContextError, Diagnostics, Source, Sources, Vm};
+use rune::{BuildError, Context, ContextError, Diagnostics, Source, Sources, Value, Vm};
 use std::sync::Arc;
-use crate::script::context::RuneheartError::{EmptyScript, RuneAllocError, RuneBuildError, RuneContextError, RuneDiagnosticError, RuneEmitError};
-use crate::script::context::RuneheartExecutionError::RuneVmError;
+use jni::JNIEnv;
+use jni::objects::JClass;
+use crate::script;
+use crate::script::rune_module::JNIBlockContext;
 
 #[allow(dead_code)]
 #[derive(Debug)]
@@ -48,7 +55,8 @@ impl RuneheartContext {
             return Err(EmptyScript);
         }
 
-        let context = Context::with_default_modules().map_err(RuneContextError)?;
+        let mut context = Context::with_default_modules().map_err(RuneContextError)?;
+        context.install(script::rune_module::module(true).map_err(RuneContextError)?).map_err(RuneContextError)?;
         let runtime = Arc::new(context.runtime().map_err(RuneAllocError)?);
 
         let mut sources = Sources::new();
@@ -83,14 +91,33 @@ impl RuneheartContext {
         Ok(Self {
             diagnostics,
             vm,
-            tick_hash: rune::Hash::type_hash(["tick"])
+            tick_hash: rune::Hash::type_hash(["tick"]),
         })
     }
 
-    pub fn callback_tick(&mut self) -> RuneheartExecutionResult<()> {
-        self.vm.execute(self.tick_hash, ()).map_err(RuneVmError)?.complete().into_result().map_err(RuneVmError)?;
+    pub fn callback_tick(&mut self, jni_context: JNIBlockContext) -> RuneheartExecutionResult<Value> {
+        let result = self
+            .vm
+            .execute(self.tick_hash, (jni_context,))
+            .map_err(RuneVmError)?
+            .complete()
+            .into_result()
+            .map_err(RuneVmError)?;
 
-        Ok(())
+        Ok(result)
+    }
+
+    #[cfg(test)]
+    pub fn callback_tick_test(&mut self) -> RuneheartExecutionResult<Value> {
+        let result = self
+            .vm
+            .execute(self.tick_hash, ())
+            .map_err(RuneVmError)?
+            .complete()
+            .into_result()
+            .map_err(RuneVmError)?;
+
+        Ok(result)
     }
 }
 

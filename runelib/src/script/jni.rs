@@ -1,7 +1,8 @@
 use jni::JNIEnv;
-use jni::objects::{JClass, JString};
-use jni::sys::jlong;
+use jni::objects::{JClass, JObject, JString};
+use jni::sys::{jlong, jobject};
 use crate::script::context::RuneheartContext;
+use crate::script::rune_module::JNIBlockContext;
 
 #[allow(non_snake_case)]
 #[unsafe(no_mangle)]
@@ -46,9 +47,10 @@ pub extern "system" fn Java_rose_runeheart_Native_tick<'local>(
     mut env: JNIEnv<'local>,
     _: JClass<'local>,
     context: jlong,
+    object: JObject<'local>,
 ) {
     let context = RuneheartContext::from_handle_mut(context);
-    if let Err(err) = context.callback_tick() {
+    if let Err(err) = context.callback_tick(JNIBlockContext::new(&env, &object)) {
         env.throw_new("java/lang/RuntimeException", format!("{:?}", err))
             .expect("failed to throw runtime exception?");
     }

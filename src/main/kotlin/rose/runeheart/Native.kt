@@ -1,5 +1,6 @@
 package rose.runeheart
 
+import net.minecraft.world.level.block.entity.BlockEntity
 import rose.runeheart.Runeheart.LOGGER
 import java.io.File
 import java.nio.ByteBuffer
@@ -30,7 +31,7 @@ object Native {
     external fun deleteContext(context: NativeContextHandle)
 
     @JvmStatic
-    external fun tick(context: NativeContextHandle)
+    external fun tick(context: NativeContextHandle, obj: BlockEntity)
 
 
     @JvmStatic
