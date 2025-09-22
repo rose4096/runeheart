@@ -1,0 +1,3 @@
+pub fn tick() {
+    rune::get_block_entities_test(rune::BlockEntityTarget::Single)
+}

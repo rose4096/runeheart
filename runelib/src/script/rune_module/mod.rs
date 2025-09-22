@@ -1,11 +1,11 @@
-use std::ptr::NonNull;
-use std::sync::Arc;
 use jni::JNIEnv;
 use jni::objects::JObject;
 use jni::sys::jobject;
 use rune::alloc::fmt::TryWrite;
 use rune::runtime::{Formatter, VmResult};
 use rune::{Any, ContextError, Module, Value, vm_write};
+use std::ptr::NonNull;
+use std::sync::Arc;
 
 #[rune::module(::rune)]
 
@@ -37,7 +37,7 @@ impl JNIBlockContext {
         Self {
             // unwrap: get_raw is assumed non-null
             raw: NonNull::new(env.get_raw()).unwrap(),
-            block_entity: NonNull::new(block_entity.as_raw()).unwrap()
+            block_entity: NonNull::new(block_entity.as_raw()).unwrap(),
         }
     }
 
@@ -62,8 +62,7 @@ impl JNIBlockContext {
 
 #[derive(Any)]
 #[rune(item = ::rune)]
-#[derive(PartialEq)]
-#[derive(Debug)]
+#[derive(PartialEq, Debug)]
 struct Error {
     message: String,
 }
@@ -98,22 +97,21 @@ mod tests {
         Ok(123)
     }
 
-    use rune::runtime::RuntimeError;
     use super::*;
     use crate::script::context::RuneheartContext;
+    use std::path::Path;
 
     #[test]
     fn test_module() {
-        let context = RuneheartContext::new(
-            r#"
-            pub fn tick() {
-                rune::get_block_entities_test(rune::BlockEntityTarget::Single)
-            }
-"#
-            .into(),
-        );
+        let mut context = RuneheartContext::new().unwrap();
+        let path = Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("src")
+            .join("script")
+            .join("rune_module")
+            .join("test.rn");
+        context.set_active_script(&path).unwrap();
 
-        let result = context.unwrap().callback_tick_test().unwrap();
+        let result = context.callback_tick_test().unwrap();
         let resultant = rune::from_value::<Result<u64, Error>>(result).unwrap();
         assert_eq!(resultant, Ok(123));
     }

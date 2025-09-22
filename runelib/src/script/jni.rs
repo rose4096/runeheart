@@ -9,25 +9,18 @@ use crate::script::rune_module::JNIBlockContext;
 pub extern "system" fn Java_rose_runeheart_Native_createContext<'local>(
     mut env: JNIEnv<'local>,
     _: JClass<'local>,
-    script: JString<'local>,
 ) -> jlong {
-    let script = env.get_string(&script);
-    match script {
-        Ok(script) => {
-            let context = RuneheartContext::new(script.into());
-            match context {
-                Ok(context) => {
-                    let context = Box::new(context);
-                    Box::into_raw(context) as jlong
-                }
-                Err(err) => {
-                    env.throw_new("java/lang/RuntimeException", format!("{:?}", err))
-                        .expect("failed to throw runtime exception?");
-                    0
-                }
-            }
+    let context = RuneheartContext::new();
+    match context {
+        Ok(context) => {
+            let context = Box::new(context);
+            Box::into_raw(context) as jlong
         }
-        _ => 0,
+        Err(err) => {
+            env.throw_new("java/lang/RuntimeException", format!("{:?}", err))
+                .expect("failed to throw runtime exception?");
+            0
+        }
     }
 }
 

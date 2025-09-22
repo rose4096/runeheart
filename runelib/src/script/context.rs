@@ -1,18 +1,20 @@
+use crate::script;
 use crate::script::context::RuneheartError::{
     EmptyScript, RuneAllocError, RuneBuildError, RuneContextError, RuneDiagnosticError,
-    RuneEmitError,
+    RuneEmitError, RunePathError,
 };
-use crate::script::context::RuneheartExecutionError::RuneVmError;
-use jni::sys::jlong;
-use rune::diagnostics::EmitError;
-use rune::runtime::VmError;
-use rune::termcolor::Buffer;
-use rune::{BuildError, Context, ContextError, Diagnostics, Source, Sources, Value, Vm};
-use std::sync::Arc;
+use crate::script::context::RuneheartExecutionError::{NoActiveScript, RuneVmError};
+use crate::script::rune_module::JNIBlockContext;
 use jni::JNIEnv;
 use jni::objects::JClass;
-use crate::script;
-use crate::script::rune_module::JNIBlockContext;
+use jni::sys::jlong;
+use rune::diagnostics::EmitError;
+use rune::runtime::{RuntimeContext, VmError};
+use rune::source::FromPathError;
+use rune::termcolor::Buffer;
+use rune::{BuildError, Context, ContextError, Diagnostics, Source, Sources, Unit, Value, Vm};
+use std::path::{Path, PathBuf};
+use std::sync::Arc;
 
 #[allow(dead_code)]
 #[derive(Debug)]
@@ -23,11 +25,13 @@ pub enum RuneheartError {
     RuneBuildError(BuildError),
     RuneEmitError(EmitError),
     RuneDiagnosticError(String),
+    RunePathError(FromPathError),
 }
 
 #[derive(Debug)]
 #[allow(dead_code)]
 pub enum RuneheartExecutionError {
+    NoActiveScript,
     RuneVmError(VmError),
 }
 
@@ -35,10 +39,18 @@ pub type RuneheartResult<T> = Result<T, RuneheartError>;
 
 pub type RuneheartExecutionResult<T> = Result<T, RuneheartExecutionError>;
 
-pub struct RuneheartContext {
-    diagnostics: Diagnostics,
+// TODO: our operations shoudl happen on this object not the overall context ,
+pub struct ActiveScript {
+    unit: Arc<Unit>,
     vm: Vm,
+}
+
+pub struct RuneheartContext {
+    directory: Option<String>,
     tick_hash: rune::Hash,
+    context: Context,
+    runtime: Arc<RuntimeContext>,
+    active_script: Option<ActiveScript>,
 }
 
 impl RuneheartContext {
@@ -50,25 +62,17 @@ impl RuneheartContext {
         unsafe { &mut *(handle as usize as *mut RuneheartContext) }
     }
 
-    pub fn new(script: String) -> RuneheartResult<Self> {
-        if script.is_empty() {
-            return Err(EmptyScript);
-        }
-
-        let mut context = Context::with_default_modules().map_err(RuneContextError)?;
-        context.install(script::rune_module::module(true).map_err(RuneContextError)?).map_err(RuneContextError)?;
-        let runtime = Arc::new(context.runtime().map_err(RuneAllocError)?);
-
+    fn compile_unit(&self, path: &Path) -> RuneheartResult<Unit> {
         let mut sources = Sources::new();
-        let mut diagnostics = Diagnostics::new();
-
         sources
-            .insert(Source::memory(script).map_err(RuneAllocError)?)
+            .insert(Source::from_path(path).map_err(RunePathError)?)
             .map_err(RuneAllocError)?;
 
+        let mut diagnostics = Diagnostics::new();
+
         let unit = rune::prepare(&mut sources)
-            .with_context(&context)
             .with_diagnostics(&mut diagnostics)
+            .with_context(&self.context)
             .build();
 
         if !diagnostics.is_empty() && diagnostics.has_error() {
@@ -84,40 +88,60 @@ impl RuneheartContext {
             return Err(RuneDiagnosticError(diagnostic_data));
         }
 
-        let unit = unit.map_err(RuneBuildError)?;
-        let unit = Arc::new(unit);
-        let vm = Vm::new(runtime, unit);
+        Ok(unit.map_err(RuneBuildError)?)
+    }
+
+    pub fn set_active_script(&mut self, path: &Path) -> RuneheartResult<()> {
+        let unit = Arc::new(self.compile_unit(path)?);
+        let vm = Vm::new(self.runtime.clone(), unit.clone());
+
+        self.active_script = Some(ActiveScript { unit, vm });
+
+        Ok(())
+    }
+
+    pub fn new() -> RuneheartResult<Self> {
+        let mut context = Context::with_default_modules().map_err(RuneContextError)?;
+        context.install(script::rune_module::module(true).map_err(RuneContextError)?).map_err(RuneContextError)?;
+        let runtime = Arc::new(context.runtime().map_err(RuneAllocError)?);
 
         Ok(Self {
-            diagnostics,
-            vm,
+            directory: None,
+            context,
+            runtime,
             tick_hash: rune::Hash::type_hash(["tick"]),
+            active_script: None,
         })
     }
 
-    pub fn callback_tick(&mut self, jni_context: JNIBlockContext) -> RuneheartExecutionResult<Value> {
-        let result = self
-            .vm
-            .execute(self.tick_hash, (jni_context,))
-            .map_err(RuneVmError)?
-            .complete()
-            .into_result()
-            .map_err(RuneVmError)?;
-
-        Ok(result)
+    pub fn callback_tick(
+        &mut self,
+        jni_context: JNIBlockContext,
+    ) -> RuneheartExecutionResult<Value> {
+        match &mut self.active_script {
+            None => Err(NoActiveScript),
+            Some(script) => Ok(script
+                .vm
+                .execute(self.tick_hash, (jni_context,))
+                .map_err(RuneVmError)?
+                .complete()
+                .into_result()
+                .map_err(RuneVmError)?),
+        }
     }
 
     #[cfg(test)]
     pub fn callback_tick_test(&mut self) -> RuneheartExecutionResult<Value> {
-        let result = self
-            .vm
-            .execute(self.tick_hash, ())
-            .map_err(RuneVmError)?
-            .complete()
-            .into_result()
-            .map_err(RuneVmError)?;
-
-        Ok(result)
+        match &mut self.active_script {
+            None => Err(NoActiveScript),
+            Some(script) => Ok(script
+                .vm
+                .execute(self.tick_hash, ())
+                .map_err(RuneVmError)?
+                .complete()
+                .into_result()
+                .map_err(RuneVmError)?),
+        }
     }
 }
 
