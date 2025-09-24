@@ -9,19 +9,29 @@ typealias NativeContextHandle = Long;
 typealias NativeRenderContextHandle = Long;
 
 object Native {
+    // TODO: clean this up
     init {
-        val (path, stream) = listOf(
-            "/natives/runelib.dll", "/natives/librunelib.dylib"
-        ).asSequence().mapNotNull { p -> Native::class.java.getResourceAsStream(p)?.let { p to it } }.first()
+        val mapped = System.mapLibraryName("runelib")
+        val res = "/natives/$mapped"
+        val bytes = Native::class.java.getResourceAsStream(res)
+            ?.use { it.readAllBytes() }
+            ?: error("runelib not found: $res")
 
-        val suffix = path.substringAfterLast('.', "")
-        val file = File(System.getProperty("java.io.tmpdir"), "runeheart-runelib.$suffix")
+        val sha16 = java.security.MessageDigest.getInstance("SHA-256")
+            .digest(bytes).joinToString("") { "%02x".format(it) }.take(16)
 
-        stream.use { input -> file.outputStream().use { input.copyTo(it) } }
-        file.deleteOnExit()
+        val dir = java.nio.file.Path.of(System.getProperty("java.io.tmpdir"), "runeheart", "cache")
+        java.nio.file.Files.createDirectories(dir)
+        val target = dir.resolve("$mapped-$sha16")
 
-        System.load(file.absolutePath)
+        if (!java.nio.file.Files.exists(target)) {
+            java.nio.file.Files.write(target, bytes)
+            try { target.toFile().deleteOnExit() } catch (_: Throwable) {}
+        }
+
+        System.load(target.toAbsolutePath().toString())
     }
+
 
     @JvmStatic
     external fun createContext(): NativeContextHandle

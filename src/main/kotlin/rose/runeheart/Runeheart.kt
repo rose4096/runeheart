@@ -58,13 +58,22 @@ object Runeheart {
         })
     }
 
-    private fun onClientSetup(event: FMLClientSetupEvent) {}
+    private fun onClientSetup(event: FMLClientSetupEvent) {
+    }
 
     private fun onServerSetup(event: FMLDedicatedServerSetupEvent) {}
 
     @SubscribeEvent
-    fun onCommonSetup(event: FMLCommonSetupEvent) {}
+    fun onCommonSetup(event: FMLCommonSetupEvent) {
+    }
+}
 
+@EventBusSubscriber(
+    modid = Runeheart.ID,
+    bus = EventBusSubscriber.Bus.MOD,
+    value = [net.neoforged.api.distmarker.Dist.CLIENT]
+)
+object ClientOnlyBus {
     @SubscribeEvent
     fun registerScreens(event: RegisterMenuScreensEvent) {
         event.register(ModMenu.EXAMPLE_BLOCK.get(), ::ExampleBlockScreen)

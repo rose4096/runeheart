@@ -112,6 +112,11 @@ repositories {
     }
 }
 
+// so console works on windows ;sob
+tasks.withType(JavaExec).configureEach {
+    standardInput = System.in
+}
+
 dependencies {
     implementation "org.jetbrains.kotlinx:kotlinx-serialization-cbor:1.7.3"
     implementation 'thedarkcolour:kotlinforforge-neoforge:5.5.0:slim'

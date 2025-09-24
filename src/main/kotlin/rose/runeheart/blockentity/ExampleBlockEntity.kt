@@ -37,7 +37,7 @@ fun ByteArray.toExampleBlockRenderData(): ExampleBlockRenderData? =
         .getOrNull()
 
 class ExampleBlockEntity(pos: BlockPos, state: BlockState) :
-    BlockEntity(ModBlockEntity.EXAMPLE_BLOCK.get(), pos, state), MenuProvider, IMenuProviderExtension {
+    BlockEntity(ModBlockEntity.EXAMPLE_BLOCK.get(), pos, state), MenuProvider {
 
     var scriptContext: ScriptContext? = null;
 
