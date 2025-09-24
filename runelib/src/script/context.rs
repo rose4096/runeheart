@@ -119,7 +119,7 @@ impl RuneheartContext {
         jni_context: JNIBlockContext,
     ) -> RuneheartExecutionResult<Value> {
         match &mut self.active_script {
-            None => Err(NoActiveScript),
+            None => Ok(Value::empty()),
             Some(script) => Ok(script
                 .vm
                 .execute(self.tick_hash, (jni_context,))
@@ -133,7 +133,7 @@ impl RuneheartContext {
     #[cfg(test)]
     pub fn callback_tick_test(&mut self) -> RuneheartExecutionResult<Value> {
         match &mut self.active_script {
-            None => Err(NoActiveScript),
+            None => Ok(Value::empty()),
             Some(script) => Ok(script
                 .vm
                 .execute(self.tick_hash, ())

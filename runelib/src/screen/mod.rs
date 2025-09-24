@@ -1,5 +1,6 @@
 pub mod text_input;
 
+use std::any::Any;
 use crate::render::input::{Input, MouseButton};
 use skia_safe::textlayout::{FontCollection, Paragraph, ParagraphBuilder, ParagraphStyle, TextStyle};
 use skia_safe::wrapper::PointerWrapper;
@@ -98,6 +99,7 @@ pub trait ScreenRenderable {
         input: &Input,
         screen_size: &ISize,
         font_collection: &FontCollection,
+        block_render_data: Option<&dyn Any>
     );
 }
 

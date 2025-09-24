@@ -22,13 +22,13 @@ import net.minecraft.world.phys.BlockHitResult
 import rose.runeheart.blockentity.ExampleBlockEntity
 import rose.runeheart.blockentity.ModBlockEntity
 import rose.runeheart.menu.ExampleBlockMenu
-import rose.runeheart.menu.RuneScriptUI
 
 
 class ExampleBlock(props: Properties) : BaseEntityBlock(props) {
     companion object {
         val EXAMPLE_BLOCK_CODEC: MapCodec<ExampleBlock> = simpleCodec(::ExampleBlock)
     }
+
     override fun codec(): MapCodec<out BaseEntityBlock> = EXAMPLE_BLOCK_CODEC
 
     override fun getRenderShape(state: BlockState): RenderShape {
@@ -59,10 +59,8 @@ class ExampleBlock(props: Properties) : BaseEntityBlock(props) {
             if (entity is ExampleBlockEntity) {
                 player.openMenu(state.getMenuProvider(level, pos)) { buf ->
                     buf.writeBlockPos(pos);
-                    buf.writeInt(entity.scripts.size)
-                    for (script in entity.scripts) {
-                        buf.writeUtf(script.key);
-                        buf.writeUtf(script.value.script);
+                    buf.writeNullable(entity.getRenderData()) { buffer, value ->
+                        buffer.writeByteArray(value)
                     }
                 }
             }

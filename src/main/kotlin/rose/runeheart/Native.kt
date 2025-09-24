@@ -4,7 +4,6 @@ import net.minecraft.world.level.block.entity.BlockEntity
 import rose.runeheart.Runeheart.LOGGER
 import java.io.File
 import java.nio.ByteBuffer
-import kotlin.io.path.createTempFile
 
 typealias NativeContextHandle = Long;
 typealias NativeRenderContextHandle = Long;
@@ -25,7 +24,7 @@ object Native {
     }
 
     @JvmStatic
-    external fun createContext(script: String): NativeContextHandle
+    external fun createContext(): NativeContextHandle
 
     @JvmStatic
     external fun deleteContext(context: NativeContextHandle)
@@ -33,6 +32,8 @@ object Native {
     @JvmStatic
     external fun tick(context: NativeContextHandle, obj: BlockEntity)
 
+    @JvmStatic
+    external fun getExampleBlockRenderData(context: NativeContextHandle): ByteArray
 
     @JvmStatic
     external fun createRenderContext(width: Int, height: Int): NativeRenderContextHandle
@@ -65,7 +66,13 @@ object Native {
     external fun onCharacterTyped(context: NativeRenderContextHandle, codePoint: Char, modifiers: Int)
 
     @JvmStatic
-    external fun renderExampleBlock(context: NativeRenderContextHandle, mouseX: Int, mouseY: Int, guiScale: Float)
+    external fun renderExampleBlock(
+        renderContext: NativeRenderContextHandle,
+        mouseX: Int,
+        mouseY: Int,
+        guiScale: Float,
+        renderData: ByteArray
+    )
 }
 
 
@@ -119,8 +126,8 @@ class RenderContext(val width: Int, val height: Int) : AutoCloseable {
 
     // TODO: maybe override this and then have the native funciton be provided so like ScreenRenderContext and
     //       make this funciton overridable .
-    fun render(mouseX: Int, mouseY: Int, guiScale: Float) {
-        return Native.renderExampleBlock(handle, mouseX, mouseY, guiScale);
+    fun render(mouseX: Int, mouseY: Int, guiScale: Float, renderData: ByteArray) {
+        return Native.renderExampleBlock(handle, mouseX, mouseY, guiScale, renderData);
     }
 
     override fun close() {
@@ -130,12 +137,12 @@ class RenderContext(val width: Int, val height: Int) : AutoCloseable {
     }
 }
 
-class ScriptContext(val script: String) : AutoCloseable {
+class ScriptContext() : AutoCloseable {
     var handle: NativeContextHandle = 0;
 
     init {
         handle = try {
-            Native.createContext(script)
+            Native.createContext()
         } catch (e: RuntimeException) {
             LOGGER.error(e.message)
             0L

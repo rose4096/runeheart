@@ -1,3 +1,4 @@
+use std::any::Any;
 use crate::render::input::{Character, Delta, Input, KeyData, KeyState, MouseButton, Position};
 use crate::screen::ScreenRenderable;
 use jni::JNIEnv;
@@ -8,6 +9,8 @@ use skia_safe::{
     AlphaType, Canvas, Color, ColorType, FontMgr, ISize, ImageInfo, Point, Surface, surfaces,
 };
 
+// TODO: THIS SHOULD BE GENERIC AND SCOPED,
+//        WE DONT NEED "RENDERABLES" we need like "RENDER_DATA" or something
 pub struct RenderContext {
     size: ISize,
     buffer: Vec<u8>,
@@ -168,7 +171,7 @@ impl RenderContext {
         self.end_draw();
     }
 
-    pub fn render_all(&mut self) {
+    pub fn render_all(&mut self, block_render_data: &dyn Any) {
         self.surface.canvas().clear(Color::from_argb(0, 0, 0, 0));
 
         self.renderables.iter_mut().for_each(|f| {
@@ -177,6 +180,7 @@ impl RenderContext {
                 &self.input,
                 &self.size,
                 &self.font_collection,
+                Some(block_render_data)
             )
         });
 

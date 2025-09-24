@@ -1,6 +1,7 @@
 package rose.runeheart.menu
 
 import net.minecraft.core.BlockPos
+import net.minecraft.network.FriendlyByteBuf
 import net.minecraft.network.RegistryFriendlyByteBuf
 import net.minecraft.world.SimpleContainer
 import net.minecraft.world.entity.player.Inventory
@@ -11,12 +12,19 @@ import net.minecraft.world.inventory.ContainerLevelAccess
 import net.minecraft.world.inventory.SimpleContainerData
 import net.minecraft.world.inventory.Slot
 import net.minecraft.world.item.ItemStack
+import rose.runeheart.ScriptContext
 import rose.runeheart.block.ModBlocks
-
-data class RuneScriptUI(val name: String, val text: String)
+import rose.runeheart.blockentity.ExampleBlockRenderData
+import rose.runeheart.blockentity.toExampleBlockRenderData
 
 // server constructor called by client after reading server data
-class ExampleBlockMenu(id: Int, val inv: Inventory, val access: ContainerLevelAccess, val pos: BlockPos, val scripts: List<RuneScriptUI>) :
+class ExampleBlockMenu(
+    id: Int,
+    val inv: Inventory,
+    val access: ContainerLevelAccess,
+    val pos: BlockPos,
+    val renderData: ByteArray?
+) :
     AbstractContainerMenu(ModMenu.EXAMPLE_BLOCK.get(), id) {
 
     // converged initialization from server/client
@@ -28,13 +36,13 @@ class ExampleBlockMenu(id: Int, val inv: Inventory, val access: ContainerLevelAc
     constructor(
         id: Int,
         inv: Inventory,
-        buf: RegistryFriendlyByteBuf
+        buf: RegistryFriendlyByteBuf,
     ) : this(
         id,
         inv,
         ContainerLevelAccess.NULL,
         buf.readBlockPos(),
-        (0 until buf.readInt()).map { RuneScriptUI(buf.readUtf(), buf.readUtf()) },
+        buf.readNullable(FriendlyByteBuf::readByteArray)
     )
 
     override fun stillValid(player: Player) = stillValid(access, player, ModBlocks.EXAMPLE_BLOCK)

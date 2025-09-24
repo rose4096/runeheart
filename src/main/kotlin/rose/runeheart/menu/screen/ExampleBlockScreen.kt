@@ -11,6 +11,7 @@ import net.minecraft.resources.ResourceLocation
 import net.minecraft.world.entity.player.Inventory
 import org.lwjgl.opengl.GL11
 import rose.runeheart.RenderContext
+import rose.runeheart.blockentity.toBytes
 import rose.runeheart.menu.ExampleBlockMenu
 import java.nio.ByteBuffer
 
@@ -98,7 +99,9 @@ class ExampleBlockScreen(menu: ExampleBlockMenu, inv: Inventory, title: Componen
 
         if (renderContext == null || renderContext?.valid() == false) return;
 
-        renderContext?.render(mouseX, mouseY, minecraft!!.window.guiScale.toFloat());
+        if (menu.renderData != null) {
+            renderContext?.render(mouseX, mouseY, minecraft!!.window.guiScale.toFloat(), menu.renderData!!);
+        }
 
         if (pixelBuffer == null || texture == null) return;
 

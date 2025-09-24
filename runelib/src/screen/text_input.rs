@@ -1,8 +1,10 @@
+use std::any::Any;
 use crate::render::input::{Input, KeyState, MouseButton};
 use crate::screen::{DrawContext, Font, ScreenRenderable, ScreenRenderableExt};
 use skia_safe::textlayout::{FontCollection, ParagraphStyle, RectHeightStyle, RectWidthStyle};
 use skia_safe::{Canvas, Color, ISize, Paint, Point, Rect};
 use std::ops::Range;
+use crate::example_block::jni::ExampleBlockRenderData;
 
 #[derive(Debug)]
 pub enum Direction {
@@ -197,6 +199,7 @@ impl ScreenRenderable for TextInput {
         input: &Input,
         screen_size: &ISize,
         font_collection: &FontCollection,
+        block_render_data: Option<&dyn Any>
     ) {
         let context = DrawContext::new(canvas, input, font_collection);
 

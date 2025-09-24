@@ -1,15 +1,16 @@
+use std::any::Any;
 use crate::render::input::{Input, KeyState, MouseButton};
 use crate::screen::text_input::TextInput;
 use crate::screen::{DrawContext, Font, ScreenRenderable, ScreenRenderableExt};
 use skia_safe::textlayout::FontCollection;
 use skia_safe::{Canvas, Color, ISize, Paint, Rect};
+use crate::example_block::jni::ExampleBlockRenderData;
 
 #[derive(Default)]
 pub struct ExampleBlockScreen {
     editor_rect: Rect,
     editor_size: i32,
     text_input: Option<TextInput>,
-
     // TODO: create interpreter window + editor window + file list window
 }
 
@@ -20,8 +21,13 @@ impl ScreenRenderable for ExampleBlockScreen {
         input: &Input,
         screen_size: &ISize,
         font_collection: &FontCollection,
+        block_render_data: Option<&dyn Any>
     ) {
         let context = DrawContext::new(canvas, input, font_collection);
+
+        if let Some(data) = block_render_data.and_then(|a| a.downcast_ref::<ExampleBlockRenderData>()) {
+            println!("got data: {:?}", data);
+        }
 
         if self.text_input.is_none() {
             self.text_input = Some(TextInput::new(
@@ -32,7 +38,7 @@ impl ScreenRenderable for ExampleBlockScreen {
         }
 
         if let Some(text_input) = &mut self.text_input {
-            text_input.render(canvas, input, screen_size, font_collection);
+            text_input.render(canvas, input, screen_size, font_collection, None);
         }
 
         self.editor_rect = Rect::new(

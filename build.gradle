@@ -99,6 +99,7 @@ configurations {
 repositories {
     // NeoForged MDK includes mavenLocal by default
     mavenLocal()
+    mavenCentral()
     // REQUIRED for using Kotlin for Forge
     maven {
         name = 'Kotlin for Forge'
@@ -112,8 +113,15 @@ repositories {
 }
 
 dependencies {
-    // Must use the '-neoforge' version on NeoForge. If on regular forge, omit the '-neoforge'
-    implementation 'thedarkcolour:kotlinforforge-neoforge:5.5.0'
+    implementation "org.jetbrains.kotlinx:kotlinx-serialization-cbor:1.7.3"
+    implementation 'thedarkcolour:kotlinforforge-neoforge:5.5.0:slim'
+
+    additionalRuntimeClasspath ('org.jetbrains.kotlin:kotlin-stdlib')
+    additionalRuntimeClasspath ('org.jetbrains.kotlin:kotlin-reflect')
+    additionalRuntimeClasspath ('org.jetbrains.kotlinx:kotlinx-coroutines-core')
+    additionalRuntimeClasspath ('org.jetbrains.kotlinx:kotlinx-serialization-core')
+    additionalRuntimeClasspath ('org.jetbrains.kotlinx:kotlinx-serialization-cbor')
+
     compileOnly "dev.emi:emi-neoforge:${emi_version}:api"
     runtimeOnly "dev.emi:emi-neoforge:${emi_version}"
 }

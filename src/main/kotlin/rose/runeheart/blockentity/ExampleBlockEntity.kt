@@ -1,5 +1,7 @@
 package rose.runeheart.blockentity
 
+import kotlinx.serialization.ExperimentalSerializationApi
+import kotlinx.serialization.Serializable
 import net.minecraft.core.BlockPos
 import net.minecraft.core.Direction
 import net.minecraft.network.chat.Component
@@ -16,12 +18,28 @@ import net.neoforged.neoforge.client.extensions.IMenuProviderExtension
 import rose.runeheart.Native
 import rose.runeheart.ScriptContext
 import rose.runeheart.menu.ExampleBlockMenu
-import rose.runeheart.menu.RuneScriptUI
+import kotlinx.serialization.cbor.Cbor
+import kotlinx.serialization.decodeFromByteArray
+import kotlinx.serialization.encodeToByteArray
+import rose.runeheart.Runeheart
+
+@Serializable
+data class ExampleBlockRenderData(
+    val scripts: List<List<String>>
+)
+
+@OptIn(ExperimentalSerializationApi::class)
+fun ExampleBlockRenderData.toBytes(): ByteArray = Cbor.encodeToByteArray(this)
+
+fun ByteArray.toExampleBlockRenderData(): ExampleBlockRenderData? =
+    runCatching { Cbor.decodeFromByteArray<ExampleBlockRenderData>(this) }
+        .onFailure { e -> Runeheart.LOGGER.error("CBOR decode failed", e) }
+        .getOrNull()
 
 class ExampleBlockEntity(pos: BlockPos, state: BlockState) :
     BlockEntity(ModBlockEntity.EXAMPLE_BLOCK.get(), pos, state), MenuProvider, IMenuProviderExtension {
 
-    var scripts: MutableMap<String, ScriptContext> = hashMapOf()
+    var scriptContext: ScriptContext? = null;
 
     data class RelativeBlockEntity(val entity: BlockEntity?, val side: Direction)
 
@@ -37,15 +55,8 @@ class ExampleBlockEntity(pos: BlockPos, state: BlockState) :
         fun tick(level: Level, pos: BlockPos, state: BlockState, blockEntity: ExampleBlockEntity) {
             if (level.isClientSide) return;
 
-            if (blockEntity.scripts.isEmpty()) {
-                blockEntity.scripts["rune"] = ScriptContext(
-                    """
-                    pub fn tick(ctx) {
-                        let test = ctx.get_block_entities(rune::BlockEntityTarget::Single);
-                        dbg!(test)
-                    }
-                    """
-                )
+            if (blockEntity.scriptContext == null) {
+                blockEntity.scriptContext = ScriptContext()
             }
 
             val itemHandlers = blockEntity.getSurroundingBlockEntities(level, pos).mapNotNull {
@@ -62,26 +73,35 @@ class ExampleBlockEntity(pos: BlockPos, state: BlockState) :
 //                it.insertItem()
 //            }
 
-            blockEntity.scripts["rune"]?.let {
-                Native.tick(it.handle, blockEntity)
+            blockEntity.scriptContext?.let {
+                Native.tick(it.handle, blockEntity);
             }
         }
     }
+
+    fun getRenderData(): ByteArray? = scriptContext?.handle?.let { Native.getExampleBlockRenderData(it) }
 
     override fun createMenu(
         id: Int,
         inv: Inventory,
         player: Player
     ): ExampleBlockMenu {
+        // NOTE: maybe will remove toExampleBlockRenderData / cbor, but keeping it for now just in case its needed
+        // but i think the kotlin side shouldnt need any render data. tldr; maybe switch to raw rust transmutations
+        // instead of doing any encoding/decoding
+        val data = getRenderData()//?.toExampleBlockRenderData();
         return ExampleBlockMenu(
             id,
             inv,
             ContainerLevelAccess.create(level!!, blockPos),
             blockPos,
-            this.scripts.map { (name, context) -> RuneScriptUI(name, context.script) })
+            data
+        )
     }
 
     override fun getDisplayName(): Component {
         return Component.literal("asdf")
     }
 }
+
+fun ByteArray.toHexString() = joinToString("") { "%02x".format(it) }
