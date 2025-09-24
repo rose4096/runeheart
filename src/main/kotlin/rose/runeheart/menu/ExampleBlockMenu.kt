@@ -23,7 +23,7 @@ class ExampleBlockMenu(
     val inv: Inventory,
     val access: ContainerLevelAccess,
     val pos: BlockPos,
-    val renderData: ByteArray?
+    var renderData: ByteArray?
 ) :
     AbstractContainerMenu(ModMenu.EXAMPLE_BLOCK.get(), id) {
 

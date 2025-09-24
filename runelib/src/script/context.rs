@@ -46,11 +46,24 @@ pub struct ActiveScript {
 }
 
 pub struct RuneheartContext {
-    directory: Option<String>,
     tick_hash: rune::Hash,
     context: Context,
     runtime: Arc<RuntimeContext>,
     active_script: Option<ActiveScript>,
+}
+
+pub enum SourceKind {
+    Path(PathBuf),
+    Content(String),
+}
+
+impl SourceKind {
+    pub fn into_source(self) -> RuneheartResult<Source> {
+        Ok(match self {
+            SourceKind::Path(path) => Source::from_path(path).map_err(RunePathError)?,
+            SourceKind::Content(content) => Source::memory(content).map_err(RuneAllocError)?,
+        })
+    }
 }
 
 impl RuneheartContext {
@@ -62,10 +75,10 @@ impl RuneheartContext {
         unsafe { &mut *(handle as usize as *mut RuneheartContext) }
     }
 
-    fn compile_unit(&self, path: &Path) -> RuneheartResult<Unit> {
+    fn compile_unit(&self, source: SourceKind) -> RuneheartResult<Unit> {
         let mut sources = Sources::new();
         sources
-            .insert(Source::from_path(path).map_err(RunePathError)?)
+            .insert(source.into_source()?)
             .map_err(RuneAllocError)?;
 
         let mut diagnostics = Diagnostics::new();
@@ -91,8 +104,8 @@ impl RuneheartContext {
         Ok(unit.map_err(RuneBuildError)?)
     }
 
-    pub fn set_active_script(&mut self, path: &Path) -> RuneheartResult<()> {
-        let unit = Arc::new(self.compile_unit(path)?);
+    pub fn set_active_script(&mut self, source: SourceKind) -> RuneheartResult<()> {
+        let unit = Arc::new(self.compile_unit(source)?);
         let vm = Vm::new(self.runtime.clone(), unit.clone());
 
         self.active_script = Some(ActiveScript { unit, vm });
@@ -102,11 +115,12 @@ impl RuneheartContext {
 
     pub fn new() -> RuneheartResult<Self> {
         let mut context = Context::with_default_modules().map_err(RuneContextError)?;
-        context.install(script::rune_module::module(true).map_err(RuneContextError)?).map_err(RuneContextError)?;
+        context
+            .install(script::rune_module::module(true).map_err(RuneContextError)?)
+            .map_err(RuneContextError)?;
         let runtime = Arc::new(context.runtime().map_err(RuneAllocError)?);
 
         Ok(Self {
-            directory: None,
             context,
             runtime,
             tick_hash: rune::Hash::type_hash(["tick"]),

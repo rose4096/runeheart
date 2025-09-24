@@ -98,7 +98,7 @@ mod tests {
     }
 
     use super::*;
-    use crate::script::context::RuneheartContext;
+    use crate::script::context::{RuneheartContext, SourceKind};
     use std::path::Path;
 
     #[test]
@@ -109,7 +109,7 @@ mod tests {
             .join("script")
             .join("rune_module")
             .join("test.rn");
-        context.set_active_script(&path).unwrap();
+        context.set_active_script(SourceKind::Path(path)).unwrap();
 
         let result = context.callback_tick_test().unwrap();
         let resultant = rune::from_value::<Result<u64, Error>>(result).unwrap();

@@ -1,10 +1,11 @@
-use std::any::Any;
+use crate::example_block::jni::{ExampleBlockRenderData, UIScript};
 use crate::render::input::{Input, KeyState, MouseButton};
 use crate::screen::text_input::TextInput;
 use crate::screen::{DrawContext, Font, ScreenRenderable, ScreenRenderableExt};
 use skia_safe::textlayout::{FontCollection, ParagraphStyle};
 use skia_safe::{Canvas, Color, ISize, Paint, Rect};
-use crate::example_block::jni::ExampleBlockRenderData;
+use std::any::Any;
+use std::path::PathBuf;
 
 #[derive(Default)]
 pub struct ExampleBlockScreen {
@@ -21,9 +22,21 @@ impl ScreenRenderable<ExampleBlockRenderData> for ExampleBlockScreen {
         input: &Input,
         screen_size: &ISize,
         font_collection: &FontCollection,
-        render_data: &ExampleBlockRenderData,
+        render_data: &mut ExampleBlockRenderData,
     ) {
         let context = DrawContext::new(canvas, input, font_collection);
+
+        match render_data.collect_directory() {
+            Ok(_) => {
+                println!("collection success")
+            }
+            Err(err) => {
+                println!("collection fail : {:?}, {:?}", render_data, err);
+            }
+        }
+        if let Some(input) = &self.text_input {
+            render_data.target_directory = PathBuf::from(&input.text)
+        }
 
         if self.text_input.is_none() {
             self.text_input = Some(TextInput::new(
@@ -34,7 +47,7 @@ impl ScreenRenderable<ExampleBlockRenderData> for ExampleBlockScreen {
         }
 
         if let Some(text_input) = &mut self.text_input {
-            text_input.render(canvas, input, screen_size, font_collection, &());
+            text_input.render(canvas, input, screen_size, font_collection, &mut ());
         }
 
         self.editor_rect = Rect::new(
@@ -74,19 +87,20 @@ impl ScreenRenderable<ExampleBlockRenderData> for ExampleBlockScreen {
             &Font::Mono(32.0, Color::BLACK),
         );
 
-        render_data.scripts.iter().enumerate().for_each(|(index, (key, val))| {
-            println!("{},{},{}",index,key,val);
-
-            // TODO:  note fix draw_text tmrw
-
-            let paragraph_style = ParagraphStyle::new()
-                .set_max_lines(1)
-                .set_ellipsis("...")
-                .to_owned();
-            let mut paragraph =
-                self.paragraph(&context, format!("{}: {}", key, val).as_str(), &Font::Mono(10.0, Color::RED), Some(paragraph_style));
-            paragraph.layout(400.0);
-            self.draw_paragraph(&context, paragraph, (screen_size.width / 2, 100 + screen_size.height / 2 + (index as i32 * 10)));
-        });
+        render_data
+            .scripts
+            .iter()
+            .enumerate()
+            .for_each(|(index, (script))| {
+                self.draw_text(
+                    &context,
+                    &script.file_name,
+                    (
+                        screen_size.width / 2,
+                        100 + screen_size.height / 2 + (index as i32 * 10),
+                    ),
+                    &Font::Mono(16.0, Color::WHITE),
+                );
+            });
     }
 }

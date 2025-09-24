@@ -59,7 +59,7 @@ class ExampleBlock(props: Properties) : BaseEntityBlock(props) {
             if (entity is ExampleBlockEntity) {
                 player.openMenu(state.getMenuProvider(level, pos)) { buf ->
                     buf.writeBlockPos(pos);
-                    buf.writeNullable(entity.getRenderData()) { buffer, value ->
+                    buf.writeNullable(entity.getActiveRenderData()) { buffer, value ->
                         buffer.writeByteArray(value)
                     }
                 }

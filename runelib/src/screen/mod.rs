@@ -99,7 +99,7 @@ pub trait ScreenRenderable<T> {
         input: &Input,
         screen_size: &ISize,
         font_collection: &FontCollection,
-        render_data: &T,
+        render_data: &mut T,
     );
 }
 
@@ -112,7 +112,8 @@ pub trait ScreenRenderableExt<T>: ScreenRenderable<T> {
         font: &Font,
     ) {
         let point = position.into();
-        let paragraph = self.paragraph(context, text.as_ref(), font, None);
+        let mut paragraph = self.paragraph(context, text.as_ref(), font, None);
+        paragraph.layout(100000.0);
         self.draw_text_raw(context, paragraph, point);
     }
 

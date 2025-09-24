@@ -9,10 +9,13 @@ import net.minecraft.client.renderer.texture.DynamicTexture
 import net.minecraft.network.chat.Component
 import net.minecraft.resources.ResourceLocation
 import net.minecraft.world.entity.player.Inventory
+import net.neoforged.neoforge.network.PacketDistributor
 import org.lwjgl.opengl.GL11
 import rose.runeheart.RenderContext
+import rose.runeheart.Runeheart
 import rose.runeheart.blockentity.toBytes
 import rose.runeheart.menu.ExampleBlockMenu
+import rose.runeheart.net.ExampleBlockRenderPayload
 import java.nio.ByteBuffer
 
 class ExampleBlockScreen(menu: ExampleBlockMenu, inv: Inventory, title: Component) :
@@ -100,7 +103,10 @@ class ExampleBlockScreen(menu: ExampleBlockMenu, inv: Inventory, title: Componen
         if (renderContext == null || renderContext?.valid() == false) return;
 
         if (menu.renderData != null) {
-            renderContext?.render(mouseX, mouseY, minecraft!!.window.guiScale.toFloat(), menu.renderData!!);
+            val dirtyRenderData = renderContext?.render(mouseX, mouseY, minecraft!!.window.guiScale.toFloat(), menu.renderData!!);
+            if (dirtyRenderData != null) {
+                PacketDistributor.sendToServer(ExampleBlockRenderPayload(menu.pos, dirtyRenderData))
+            }
         }
 
         if (pixelBuffer == null || texture == null) return;

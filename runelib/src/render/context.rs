@@ -1,22 +1,25 @@
 use crate::render::input::{Character, Delta, Input, KeyData, KeyState, MouseButton, Position};
 use crate::screen::ScreenRenderable;
 use jni::JNIEnv;
-use jni::objects::JByteBuffer;
+use jni::objects::{JByteArray, JByteBuffer, JObject};
 use jni::sys::jlong;
 use skia_safe::textlayout::{FontCollection, TypefaceFontProvider};
 use skia_safe::{
     AlphaType, Canvas, Color, ColorType, FontMgr, ISize, ImageInfo, Point, Surface, surfaces,
 };
 use std::any::Any;
-
+use ciborium::into_writer;
+use serde::Serialize;
+use crate::example_block::jni::ExampleBlockRenderData;
 // requiring default is purely for optimization reasons
 
 pub struct RenderData<T: Default> {
     renderable: Box<dyn ScreenRenderable<T>>,
     block_data: T,
+    block_data_dirty: bool,
 }
 
-pub struct RenderContext<T: Default> {
+pub struct RenderContext<T: Default + Serialize> {
     size: ISize,
     buffer: Vec<u8>,
     input: Input,
@@ -28,7 +31,7 @@ pub struct RenderContext<T: Default> {
     render_data: RenderData<T>,
 }
 
-impl<T: Default> RenderContext<T> {
+impl<T: Default + Serialize> RenderContext<T> {
     pub fn from_handle(handle: jlong) -> &'static Self {
         unsafe { &*(handle as usize as *mut RenderContext<T>) }
     }
@@ -65,6 +68,7 @@ impl<T: Default> RenderContext<T> {
             render_data: RenderData {
                 renderable,
                 block_data: T::default(),
+                block_data_dirty: false,
             },
         }
     }
@@ -171,9 +175,24 @@ impl<T: Default> RenderContext<T> {
             &self.input,
             &self.size,
             &self.font_collection,
-            &self.render_data.block_data,
+            &mut self.render_data.block_data,
         );
 
+        // TODO: bad we need some sort of notifier from render
+        self.render_data.block_data_dirty = true;
+
         self.end_draw();
+    }
+
+    pub fn get_dirty_render_data<'local>(&mut self, env: &mut JNIEnv<'local>) -> Option<JObject<'local>> {
+        if self.render_data.block_data_dirty {
+            self.render_data.block_data_dirty = false;
+
+            let mut encoded: Vec<u8> = Vec::new();
+            into_writer(&self.render_data.block_data, &mut encoded).ok()?;
+            Some(env.byte_array_from_slice(&encoded).ok()?.into())
+        } else {
+            Some(JObject::null())
+        }
     }
 }

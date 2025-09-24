@@ -131,7 +131,7 @@ impl Cursor {
 #[derive(Debug)]
 pub struct TextInput {
     position: Point,
-    text: String,
+    pub text: String,
     focused: bool,
     font: Font,
     max_width: Option<i32>,
@@ -199,7 +199,7 @@ impl ScreenRenderable<()> for TextInput {
         input: &Input,
         screen_size: &ISize,
         font_collection: &FontCollection,
-        render_data: &(),
+        render_data: &mut (),
     ) {
         let context = DrawContext::new(canvas, input, font_collection);
 

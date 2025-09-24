@@ -2,6 +2,7 @@ package rose.runeheart
 
 import net.minecraft.world.level.block.entity.BlockEntity
 import rose.runeheart.Runeheart.LOGGER
+import rose.runeheart.blockentity.ExampleBlockEntity
 import java.io.File
 import java.nio.ByteBuffer
 
@@ -43,7 +44,10 @@ object Native {
     external fun tick(context: NativeContextHandle, obj: BlockEntity)
 
     @JvmStatic
-    external fun getExampleBlockRenderData(context: NativeContextHandle): ByteArray
+    external fun constructExampleBlockRenderData(context: NativeContextHandle): ByteArray
+
+    @JvmStatic
+    external fun updateScriptContextFromRenderData(context: NativeContextHandle, renderData: ByteArray)
 
     @JvmStatic
     external fun createRenderContext(width: Int, height: Int): NativeRenderContextHandle
@@ -82,7 +86,7 @@ object Native {
         mouseY: Int,
         guiScale: Float,
         renderData: ByteArray
-    )
+    ): ByteArray?
 }
 
 
@@ -136,7 +140,7 @@ class RenderContext(val width: Int, val height: Int) : AutoCloseable {
 
     // TODO: maybe override this and then have the native funciton be provided so like ScreenRenderContext and
     //       make this funciton overridable .
-    fun render(mouseX: Int, mouseY: Int, guiScale: Float, renderData: ByteArray) {
+    fun render(mouseX: Int, mouseY: Int, guiScale: Float, renderData: ByteArray): ByteArray? {
         return Native.renderExampleBlock(handle, mouseX, mouseY, guiScale, renderData);
     }
 

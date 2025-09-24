@@ -40,6 +40,7 @@ class ExampleBlockEntity(pos: BlockPos, state: BlockState) :
     BlockEntity(ModBlockEntity.EXAMPLE_BLOCK.get(), pos, state), MenuProvider {
 
     var scriptContext: ScriptContext? = null;
+    var renderData: ByteArray? = null;
 
     data class RelativeBlockEntity(val entity: BlockEntity?, val side: Direction)
 
@@ -57,6 +58,10 @@ class ExampleBlockEntity(pos: BlockPos, state: BlockState) :
 
             if (blockEntity.scriptContext == null) {
                 blockEntity.scriptContext = ScriptContext()
+            }
+
+            if (blockEntity.renderData != null) {
+                Native.updateScriptContextFromRenderData(blockEntity.scriptContext!!.handle, blockEntity.renderData!!)
             }
 
             val itemHandlers = blockEntity.getSurroundingBlockEntities(level, pos).mapNotNull {
@@ -79,7 +84,17 @@ class ExampleBlockEntity(pos: BlockPos, state: BlockState) :
         }
     }
 
-    fun getRenderData(): ByteArray? = scriptContext?.handle?.let { Native.getExampleBlockRenderData(it) }
+    fun updateRenderData(data: ByteArray) {
+        renderData = data
+    }
+
+    fun getActiveRenderData(): ByteArray? {
+        if (renderData == null) {
+            renderData = scriptContext?.handle?.let { Native.constructExampleBlockRenderData(it) }
+        }
+
+        return renderData
+    }
 
     override fun createMenu(
         id: Int,
@@ -89,7 +104,7 @@ class ExampleBlockEntity(pos: BlockPos, state: BlockState) :
         // NOTE: maybe will remove toExampleBlockRenderData / cbor, but keeping it for now just in case its needed
         // but i think the kotlin side shouldnt need any render data. tldr; maybe switch to raw rust transmutations
         // instead of doing any encoding/decoding
-        val data = getRenderData()//?.toExampleBlockRenderData();
+        val data = getActiveRenderData()//?.toExampleBlockRenderData();
         return ExampleBlockMenu(
             id,
             inv,
@@ -103,5 +118,3 @@ class ExampleBlockEntity(pos: BlockPos, state: BlockState) :
         return Component.literal("asdf")
     }
 }
-
-fun ByteArray.toHexString() = joinToString("") { "%02x".format(it) }

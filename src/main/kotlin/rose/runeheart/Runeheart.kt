@@ -12,6 +12,7 @@ import net.neoforged.fml.event.lifecycle.FMLClientSetupEvent
 import net.neoforged.fml.event.lifecycle.FMLCommonSetupEvent
 import net.neoforged.fml.event.lifecycle.FMLDedicatedServerSetupEvent
 import net.neoforged.neoforge.client.event.RegisterMenuScreensEvent
+import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent
 import net.neoforged.neoforge.registries.DeferredRegister
 import org.apache.logging.log4j.Level
 import org.apache.logging.log4j.LogManager
@@ -21,6 +22,8 @@ import rose.runeheart.blockentity.ModBlockEntity
 import rose.runeheart.item.ModItems
 import rose.runeheart.menu.ModMenu
 import rose.runeheart.menu.screen.ExampleBlockScreen
+import rose.runeheart.net.ExampleBlockRenderDataPayload
+import rose.runeheart.net.ExampleBlockRenderPayload
 import thedarkcolour.kotlinforforge.neoforge.forge.MOD_BUS
 import thedarkcolour.kotlinforforge.neoforge.forge.runForDist
 
@@ -64,7 +67,18 @@ object Runeheart {
     private fun onServerSetup(event: FMLDedicatedServerSetupEvent) {}
 
     @SubscribeEvent
-    fun onCommonSetup(event: FMLCommonSetupEvent) {
+    private fun registerPayloadHandlers(event: RegisterPayloadHandlersEvent) {
+        val registrar = event.registrar("1")
+        registrar.playToServer(
+            ExampleBlockRenderPayload.TYPE,
+            ExampleBlockRenderPayload.STREAM_CODEC,
+            ExampleBlockRenderPayload::handle
+        )
+        registrar.playToClient(
+            ExampleBlockRenderDataPayload.TYPE,
+            ExampleBlockRenderDataPayload.STREAM_CODEC,
+            ExampleBlockRenderDataPayload::handle
+        )
     }
 }
 
