@@ -10,7 +10,7 @@ use skia_safe::wrapper::NativeTransmutableWrapper;
 
 #[derive(Serialize, Deserialize, Debug, Default)]
 pub struct ExampleBlockRenderData {
-    scripts: Vec<(String, String)>,
+    pub scripts: Vec<(String, String)>,
 }
 
 #[allow(non_snake_case)]

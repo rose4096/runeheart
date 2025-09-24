@@ -2,7 +2,7 @@ use std::any::Any;
 use crate::render::input::{Input, KeyState, MouseButton};
 use crate::screen::text_input::TextInput;
 use crate::screen::{DrawContext, Font, ScreenRenderable, ScreenRenderableExt};
-use skia_safe::textlayout::FontCollection;
+use skia_safe::textlayout::{FontCollection, ParagraphStyle};
 use skia_safe::{Canvas, Color, ISize, Paint, Rect};
 use crate::example_block::jni::ExampleBlockRenderData;
 
@@ -24,8 +24,6 @@ impl ScreenRenderable<ExampleBlockRenderData> for ExampleBlockScreen {
         render_data: &ExampleBlockRenderData,
     ) {
         let context = DrawContext::new(canvas, input, font_collection);
-
-        println!(" we won motherfucker {:?}", render_data);
 
         if self.text_input.is_none() {
             self.text_input = Some(TextInput::new(
@@ -75,5 +73,20 @@ impl ScreenRenderable<ExampleBlockRenderData> for ExampleBlockScreen {
             (screen_size.width / 2, screen_size.height / 2),
             &Font::Mono(32.0, Color::BLACK),
         );
+
+        render_data.scripts.iter().enumerate().for_each(|(index, (key, val))| {
+            println!("{},{},{}",index,key,val);
+
+            // TODO:  note fix draw_text tmrw
+
+            let paragraph_style = ParagraphStyle::new()
+                .set_max_lines(1)
+                .set_ellipsis("...")
+                .to_owned();
+            let mut paragraph =
+                self.paragraph(&context, format!("{}: {}", key, val).as_str(), &Font::Mono(10.0, Color::RED), Some(paragraph_style));
+            paragraph.layout(400.0);
+            self.draw_paragraph(&context, paragraph, (screen_size.width / 2, 100 + screen_size.height / 2 + (index as i32 * 10)));
+        });
     }
 }
