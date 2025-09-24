@@ -59,7 +59,7 @@ impl<'a> DrawContext<'a> {
     }
 }
 
-pub trait ScreenRenderable {
+pub trait ScreenRenderable<T> {
     fn paragraph(&self, context: &DrawContext, text: &str, font: &Font, paragraph_style: Option<ParagraphStyle>) -> Paragraph {
         let paragraph_style = paragraph_style.unwrap_or_default();
         let mut paragraph_builder =
@@ -99,11 +99,11 @@ pub trait ScreenRenderable {
         input: &Input,
         screen_size: &ISize,
         font_collection: &FontCollection,
-        block_render_data: Option<&dyn Any>
+        render_data: &T,
     );
 }
 
-pub trait ScreenRenderableExt: ScreenRenderable {
+pub trait ScreenRenderableExt<T>: ScreenRenderable<T> {
     fn draw_text(
         &self,
         context: &DrawContext,
@@ -121,4 +121,7 @@ pub trait ScreenRenderableExt: ScreenRenderable {
     }
 }
 
-impl<T: ScreenRenderable + ?Sized> ScreenRenderableExt for T {}
+impl<D, R> ScreenRenderableExt<D> for R
+where
+    R: ScreenRenderable<D> + ?Sized,
+{}

@@ -192,14 +192,14 @@ impl TextInput {
     }
 }
 
-impl ScreenRenderable for TextInput {
+impl ScreenRenderable<()> for TextInput {
     fn render(
         &mut self,
         canvas: &Canvas,
         input: &Input,
         screen_size: &ISize,
         font_collection: &FontCollection,
-        block_render_data: Option<&dyn Any>
+        render_data: &(),
     ) {
         let context = DrawContext::new(canvas, input, font_collection);
 

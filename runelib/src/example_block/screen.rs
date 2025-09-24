@@ -14,20 +14,18 @@ pub struct ExampleBlockScreen {
     // TODO: create interpreter window + editor window + file list window
 }
 
-impl ScreenRenderable for ExampleBlockScreen {
+impl ScreenRenderable<ExampleBlockRenderData> for ExampleBlockScreen {
     fn render(
         &mut self,
         canvas: &Canvas,
         input: &Input,
         screen_size: &ISize,
         font_collection: &FontCollection,
-        block_render_data: Option<&dyn Any>
+        render_data: &ExampleBlockRenderData,
     ) {
         let context = DrawContext::new(canvas, input, font_collection);
 
-        if let Some(data) = block_render_data.and_then(|a| a.downcast_ref::<ExampleBlockRenderData>()) {
-            println!("got data: {:?}", data);
-        }
+        println!(" we won motherfucker {:?}", render_data);
 
         if self.text_input.is_none() {
             self.text_input = Some(TextInput::new(
@@ -38,7 +36,7 @@ impl ScreenRenderable for ExampleBlockScreen {
         }
 
         if let Some(text_input) = &mut self.text_input {
-            text_input.render(canvas, input, screen_size, font_collection, None);
+            text_input.render(canvas, input, screen_size, font_collection, &());
         }
 
         self.editor_rect = Rect::new(

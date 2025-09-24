@@ -8,7 +8,7 @@ use jni::sys::{jbyteArray, jfloat, jint, jlong};
 use serde::{Deserialize, Serialize};
 use skia_safe::wrapper::NativeTransmutableWrapper;
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Default)]
 pub struct ExampleBlockRenderData {
     scripts: Vec<(String, String)>,
 }
@@ -60,14 +60,12 @@ pub extern "system" fn Java_rose_runeheart_Native_renderExampleBlock<'local>(
     if let Ok(bytes) = env.convert_byte_array(render_data_bytes)
         && let Ok(render_data) = from_reader::<ExampleBlockRenderData, _>(&bytes[..])
     {
-        let context = RenderContext::from_handle_mut(context);
-        if context.is_renderables_empty() {
-            context.push_renderable(Box::new(ExampleBlockScreen::default()));
-        }
+        let context: &mut RenderContext<ExampleBlockRenderData> = RenderContext::from_handle_mut(context);
+        context.update_render_data(render_data);
 
         // multiply mouse_x/y by gui_scale so the position is accurate
         context.on_mouse_move(mouse_x * gui_scale as jint, mouse_y * gui_scale as jint);
 
-        context.render_all(&render_data);
+        context.render_all();
     }
 }

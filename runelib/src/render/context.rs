@@ -1,4 +1,3 @@
-use std::any::Any;
 use crate::render::input::{Character, Delta, Input, KeyData, KeyState, MouseButton, Position};
 use crate::screen::ScreenRenderable;
 use jni::JNIEnv;
@@ -8,10 +7,16 @@ use skia_safe::textlayout::{FontCollection, TypefaceFontProvider};
 use skia_safe::{
     AlphaType, Canvas, Color, ColorType, FontMgr, ISize, ImageInfo, Point, Surface, surfaces,
 };
+use std::any::Any;
 
-// TODO: THIS SHOULD BE GENERIC AND SCOPED,
-//        WE DONT NEED "RENDERABLES" we need like "RENDER_DATA" or something
-pub struct RenderContext {
+// requiring default is purely for optimization reasons
+
+pub struct RenderData<T: Default> {
+    renderable: Box<dyn ScreenRenderable<T>>,
+    block_data: T,
+}
+
+pub struct RenderContext<T: Default> {
     size: ISize,
     buffer: Vec<u8>,
     input: Input,
@@ -20,19 +25,19 @@ pub struct RenderContext {
     info: ImageInfo,
     surface: Surface,
     font_collection: FontCollection,
-    renderables: Vec<Box<dyn ScreenRenderable>>,
+    render_data: RenderData<T>,
 }
 
-impl RenderContext {
+impl<T: Default> RenderContext<T> {
     pub fn from_handle(handle: jlong) -> &'static Self {
-        unsafe { &*(handle as usize as *mut RenderContext) }
+        unsafe { &*(handle as usize as *mut RenderContext<T>) }
     }
 
     pub fn from_handle_mut(handle: jlong) -> &'static mut Self {
-        unsafe { &mut *(handle as usize as *mut RenderContext) }
+        unsafe { &mut *(handle as usize as *mut RenderContext<T>) }
     }
 
-    pub fn new(size: ISize) -> Self {
+    pub fn new<R: ScreenRenderable<T> + 'static>(size: ISize, renderable: Box<R>) -> Self {
         let info = ImageInfo::new(size, ColorType::RGBA8888, AlphaType::Premul, None);
         let surface = surfaces::raster(&info, None, None).expect("surface");
 
@@ -57,7 +62,10 @@ impl RenderContext {
             info,
             surface,
             font_collection,
-            renderables: Vec::new(),
+            render_data: RenderData {
+                renderable,
+                block_data: T::default(),
+            },
         }
     }
 
@@ -147,51 +155,25 @@ impl RenderContext {
     pub fn on_character_typed(&mut self, code_point: u16, modifiers: i32) {
         self.input.typed_characters.push_back(Character {
             code_point,
-            modifiers
+            modifiers,
         })
     }
 
-    // i really hate this but also why does Surface::canvas take a mutable ref
-    // also it lets us wrap .end_draw nicely
-    pub fn with_canvas(
-        &mut self,
-        f: impl FnOnce(&Canvas, &Input, &ISize, &FontCollection, &[Box<dyn ScreenRenderable>]),
-    ) {
-        // clear the canvas before we use it ...
+    pub fn update_render_data(&mut self, block_data: T) {
+        self.render_data.block_data = block_data;
+    }
+
+    pub fn render_all(&mut self) {
         self.surface.canvas().clear(Color::from_argb(0, 0, 0, 0));
 
-        f(
+        self.render_data.renderable.render(
             self.surface.canvas(),
             &self.input,
             &self.size,
             &self.font_collection,
-            &self.renderables,
+            &self.render_data.block_data,
         );
 
         self.end_draw();
-    }
-
-    pub fn render_all(&mut self, block_render_data: &dyn Any) {
-        self.surface.canvas().clear(Color::from_argb(0, 0, 0, 0));
-
-        self.renderables.iter_mut().for_each(|f| {
-            f.render(
-                self.surface.canvas(),
-                &self.input,
-                &self.size,
-                &self.font_collection,
-                Some(block_render_data)
-            )
-        });
-
-        self.end_draw();
-    }
-
-    pub fn push_renderable(&mut self, renderable: Box<dyn ScreenRenderable>) {
-        self.renderables.push(renderable);
-    }
-
-    pub fn is_renderables_empty(&self) -> bool {
-        self.renderables.is_empty()
     }
 }
