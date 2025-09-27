@@ -26,16 +26,13 @@ impl ScreenRenderable<ExampleBlockRenderData> for ExampleBlockScreen {
     ) {
         let context = DrawContext::new(canvas, input, font_collection);
 
-        match render_data.collect_directory() {
-            Ok(_) => {
-                println!("collection success")
-            }
-            Err(err) => {
-                println!("collection fail : {:?}, {:?}", render_data, err);
-            }
-        }
         if let Some(input) = &self.text_input {
-            render_data.target_directory = PathBuf::from(&input.text)
+            let new_path = PathBuf::from(&input.text);
+            if render_data.target_directory != new_path {
+                render_data.target_directory = new_path;
+                // ignore the error for now .. we dont superrrr care
+                let _ = render_data.collect_directory();
+            }
         }
 
         if self.text_input.is_none() {
@@ -89,18 +86,47 @@ impl ScreenRenderable<ExampleBlockRenderData> for ExampleBlockScreen {
 
         render_data
             .scripts
-            .iter()
+            .iter_mut()
             .enumerate()
             .for_each(|(index, (script))| {
-                self.draw_text(
-                    &context,
-                    &script.file_name,
-                    (
+                let font = Font::Mono(16.0, Color::WHITE);
+                if let Some(text_bounds) =
+                    font.measure_text_bounds(&script.file_name, Some(&paint), font_collection)
+                {
+                    let render_pos = (
                         screen_size.width / 2,
                         100 + screen_size.height / 2 + (index as i32 * 10),
-                    ),
-                    &Font::Mono(16.0, Color::WHITE),
-                );
+                    );
+                    let target = text_bounds.with_offset(render_pos);
+
+                    paint.set_color(Color::from_argb(255, 255, 255, 255));
+
+                    if input.is_mouse_hovering(target) {
+                        paint.set_color(Color::from_argb(255, 255, 0, 255));
+
+                        if input.is_mouse_down(MouseButton::Left) {
+                            render_data.active_script = Some(script.clone());
+                        }
+                    }
+
+                    if let Some(active_script) = &render_data.active_script
+                        && script == active_script
+                    {
+                        paint.set_color(Color::from_argb(255, 0, 0, 255));
+                    }
+
+                    self.draw_text(
+                        &context,
+                        &script.file_name,
+                        render_pos,
+                        &Font::Mono(16.0, paint.color()),
+                    );
+                }
             });
+
+        if let Some(active_script) = &render_data.active_script
+        {
+            self.draw_text(&context, &active_script.content, (0.0, 0.0), &Font::Mono(14.0, Color::GRAY));
+        }
     }
 }

@@ -1,10 +1,12 @@
 pub mod text_input;
 
-use std::any::Any;
 use crate::render::input::{Input, MouseButton};
-use skia_safe::textlayout::{FontCollection, Paragraph, ParagraphBuilder, ParagraphStyle, TextStyle};
+use skia_safe::textlayout::{
+    FontCollection, Paragraph, ParagraphBuilder, ParagraphStyle, TextStyle,
+};
 use skia_safe::wrapper::PointerWrapper;
 use skia_safe::{Canvas, Color, FontStyle, ISize, Paint, Point, Rect, Size, scalar};
+use std::any::Any;
 
 #[derive(Debug)]
 pub enum Font {
@@ -13,7 +15,7 @@ pub enum Font {
 }
 
 impl Font {
-    fn get_font(&self, font_collection: &FontCollection) -> Option<skia_safe::Font> {
+    pub fn get_font(&self, font_collection: &FontCollection) -> Option<skia_safe::Font> {
         let mut fc = font_collection.clone();
         // ^^ this sucks. but why is find_typefaces mutable??
 
@@ -30,12 +32,29 @@ impl Font {
         Some(skia_safe::Font::from_typeface(tfs.first()?, *size))
     }
 
-    fn measure_text(&self, text: &str, paint: Option<&Paint>, font_collection: &FontCollection) -> Option<(scalar, Rect)> {
+    pub fn measure_text(
+        &self,
+        text: &str,
+        paint: Option<&Paint>,
+        font_collection: &FontCollection,
+    ) -> Option<(scalar, Rect)> {
         let font = self.get_font(font_collection)?;
         Some(font.measure_text(text, paint))
     }
 
-    fn measure_height(&self, font_collection: &FontCollection) -> Option<scalar> {
+    pub fn measure_text_bounds(
+        &self,
+        text: &str,
+        paint: Option<&Paint>,
+        font_collection: &FontCollection,
+    ) -> Option<Rect> {
+        let (_, rect) = self.measure_text(text, paint, font_collection)?;
+        let sk_font = self.get_font(font_collection)?;
+        let metrics = sk_font.metrics().1;
+        Some(rect.with_offset((0.0, metrics.top.abs())))
+    }
+
+    pub fn measure_height(&self, font_collection: &FontCollection) -> Option<scalar> {
         let font = self.get_font(font_collection)?;
         let metrics = font.metrics();
         // maybe use ascent/descent
@@ -60,7 +79,13 @@ impl<'a> DrawContext<'a> {
 }
 
 pub trait ScreenRenderable<T> {
-    fn paragraph(&self, context: &DrawContext, text: &str, font: &Font, paragraph_style: Option<ParagraphStyle>) -> Paragraph {
+    fn paragraph(
+        &self,
+        context: &DrawContext,
+        text: &str,
+        font: &Font,
+        paragraph_style: Option<ParagraphStyle>,
+    ) -> Paragraph {
         let paragraph_style = paragraph_style.unwrap_or_default();
         let mut paragraph_builder =
             ParagraphBuilder::new(&paragraph_style, context.font_collection);
@@ -122,7 +147,4 @@ pub trait ScreenRenderableExt<T>: ScreenRenderable<T> {
     }
 }
 
-impl<D, R> ScreenRenderableExt<D> for R
-where
-    R: ScreenRenderable<D> + ?Sized,
-{}
+impl<D, R> ScreenRenderableExt<D> for R where R: ScreenRenderable<D> + ?Sized {}

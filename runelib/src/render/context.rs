@@ -1,22 +1,18 @@
 use crate::render::input::{Character, Delta, Input, KeyData, KeyState, MouseButton, Position};
 use crate::screen::ScreenRenderable;
-use jni::JNIEnv;
-use jni::objects::{JByteArray, JByteBuffer, JObject};
-use jni::sys::jlong;
-use skia_safe::textlayout::{FontCollection, TypefaceFontProvider};
-use skia_safe::{
-    AlphaType, Canvas, Color, ColorType, FontMgr, ISize, ImageInfo, Point, Surface, surfaces,
-};
-use std::any::Any;
 use ciborium::into_writer;
+use jni::JNIEnv;
+use jni::objects::{JByteBuffer, JObject};
+use jni::sys::jlong;
 use serde::Serialize;
-use crate::example_block::jni::ExampleBlockRenderData;
+use skia_safe::textlayout::{FontCollection, TypefaceFontProvider};
+use skia_safe::{AlphaType, Color, ColorType, FontMgr, ISize, ImageInfo, Surface, surfaces};
 // requiring default is purely for optimization reasons
 
-pub struct RenderData<T: Default> {
+pub struct RenderData<T: Default + Serialize> {
     renderable: Box<dyn ScreenRenderable<T>>,
     block_data: T,
-    block_data_dirty: bool,
+    block_data_old: Vec<u8>,
 }
 
 pub struct RenderContext<T: Default + Serialize> {
@@ -58,7 +54,7 @@ impl<T: Default + Serialize> RenderContext<T> {
         let mut font_collection = FontCollection::new();
         font_collection.set_default_font_manager(Some(typeface_font_provider.into()), None);
 
-        Self {
+        let mut obj = Self {
             size,
             buffer: vec![0u8; (size.width * size.height * 4) as usize],
             input: Input::default(),
@@ -68,9 +64,18 @@ impl<T: Default + Serialize> RenderContext<T> {
             render_data: RenderData {
                 renderable,
                 block_data: T::default(),
-                block_data_dirty: false,
+                block_data_old: Vec::new(),
             },
-        }
+        };
+
+        // surely better way to do this, also dont care about expect bcz if this fails we have other problems
+        into_writer(
+            &obj.render_data.block_data,
+            &mut obj.render_data.block_data_old,
+        )
+        .expect("serializing default block data");
+
+        obj
     }
 
     pub fn resize_pixel_buffer(&mut self, size: ISize) {
@@ -178,21 +183,24 @@ impl<T: Default + Serialize> RenderContext<T> {
             &mut self.render_data.block_data,
         );
 
-        // TODO: bad we need some sort of notifier from render
-        self.render_data.block_data_dirty = true;
-
         self.end_draw();
     }
 
-    pub fn get_dirty_render_data<'local>(&mut self, env: &mut JNIEnv<'local>) -> Option<JObject<'local>> {
-        if self.render_data.block_data_dirty {
-            self.render_data.block_data_dirty = false;
-
-            let mut encoded: Vec<u8> = Vec::new();
-            into_writer(&self.render_data.block_data, &mut encoded).ok()?;
-            Some(env.byte_array_from_slice(&encoded).ok()?.into())
-        } else {
-            Some(JObject::null())
+    pub fn get_dirty_render_data<'local>(
+        &mut self,
+        env: &mut JNIEnv<'local>,
+    ) -> Option<JObject<'local>> {
+        let mut encoded: Vec<u8> = Vec::new();
+        if into_writer(&self.render_data.block_data, &mut encoded).is_ok()
+            && encoded != self.render_data.block_data_old
+        {
+            self.render_data.block_data_old = encoded;
+            return Some(
+                env.byte_array_from_slice(&self.render_data.block_data_old)
+                    .ok()?
+                    .into(),
+            );
         }
+        Some(JObject::null())
     }
 }

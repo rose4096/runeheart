@@ -10,31 +10,33 @@ use serde::{Deserialize, Serialize};
 use skia_safe::wrapper::NativeTransmutableWrapper;
 use std::path::PathBuf;
 
-#[derive(Serialize, Deserialize, Debug, Default)]
+#[derive(Serialize, Deserialize, Debug, Default, Clone, PartialEq)]
 pub struct UIScript {
     pub file_name: String,
     pub full_path: PathBuf,
     pub content: String,
-    pub active: bool,
 }
 
 #[derive(Serialize, Deserialize, Debug, Default)]
 pub struct ExampleBlockRenderData {
     pub scripts: Vec<UIScript>,
     pub target_directory: PathBuf,
+    pub active_script: Option<UIScript>,
 }
 
 impl ExampleBlockRenderData {
     pub fn collect_directory(&mut self) -> io::Result<()> {
         self.scripts = fs::read_dir(&self.target_directory)?.filter_map(|file_path| {
             let file_path = file_path.ok()?;
+            if file_path.path().extension()? == "rn" {
+                return Some(UIScript{
+                    file_name: file_path.file_name().to_string_lossy().to_string(),
+                    full_path: file_path.path(),
+                    content: fs::read_to_string(file_path.path()).ok()?,
+                });
+            }
 
-            Some(UIScript{
-                file_name: file_path.file_name().to_string_lossy().to_string(),
-                full_path: file_path.path(),
-                content: fs::read_to_string(file_path.path()).ok()?,
-                active: false,
-            })
+            None
         }).collect();
 
         Ok(())
@@ -80,7 +82,7 @@ pub extern "system" fn Java_rose_runeheart_Native_updateScriptContextFromRenderD
     {
         let context = RuneheartContext::from_handle_mut(context);
         println!("UPDATING RENDER DATA {:?}", render_data);
-        if let Some(script) = render_data.scripts.iter().find(|script| script.active) {
+        if let Some(script) = render_data.active_script {
             context
                 .set_active_script(SourceKind::Content(script.content.clone()))
                 .unwrap();
