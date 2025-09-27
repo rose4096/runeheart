@@ -81,7 +81,6 @@ pub extern "system" fn Java_rose_runeheart_Native_updateScriptContextFromRenderD
         && let Ok(render_data) = from_reader::<ExampleBlockRenderData, _>(&bytes[..])
     {
         let context = RuneheartContext::from_handle_mut(context);
-        println!("UPDATING RENDER DATA {:?}", render_data);
         if let Some(script) = render_data.active_script {
             context
                 .set_active_script(SourceKind::Content(script.content.clone()))

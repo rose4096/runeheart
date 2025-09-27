@@ -306,9 +306,6 @@ impl ScreenRenderable<()> for TextInput {
         const CTRL_SHIFT_MODIFIER: i32 = 3;
         const ALT_MODIFIER: i32 = 4;
 
-        if !input.key_state.is_empty() {
-            println!("{:?}", input.key_state);
-        }
         input.key_state.iter().find(|key| 'out: {
             match key {
                 KeyState::Pressed(key) => match key.key_code {
