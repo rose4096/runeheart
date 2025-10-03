@@ -16,7 +16,7 @@ pub extern "system" fn Java_rose_runeheart_Native_createRenderContext<'local>(
 ) -> jlong {
     Box::into_raw(Box::new(RenderContext::<ExampleBlockRenderData>::new(
         ISize::new(width, height),
-        Box::new(ExampleBlockScreen::default()),
+        Box::new(ExampleBlockScreen::new()),
     ))) as jlong
 }
 

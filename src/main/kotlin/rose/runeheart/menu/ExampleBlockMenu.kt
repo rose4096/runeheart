@@ -14,8 +14,6 @@ import net.minecraft.world.inventory.Slot
 import net.minecraft.world.item.ItemStack
 import rose.runeheart.ScriptContext
 import rose.runeheart.block.ModBlocks
-import rose.runeheart.blockentity.ExampleBlockRenderData
-import rose.runeheart.blockentity.toExampleBlockRenderData
 
 // server constructor called by client after reading server data
 class ExampleBlockMenu(

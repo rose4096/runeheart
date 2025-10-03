@@ -4,7 +4,7 @@ use crate::script::context::RuneheartError::{
     RuneEmitError, RunePathError,
 };
 use crate::script::context::RuneheartExecutionError::{NoActiveScript, RuneVmError};
-use crate::script::rune_module::JNIBlockContext;
+use crate::script::rune_module::{JNIBlockContext, ScriptableBlockEntity};
 use jni::JNIEnv;
 use jni::objects::JClass;
 use jni::sys::jlong;
@@ -131,12 +131,13 @@ impl RuneheartContext {
     pub fn callback_tick(
         &mut self,
         jni_context: JNIBlockContext,
+        scriptables: Vec<ScriptableBlockEntity>,
     ) -> RuneheartExecutionResult<Value> {
         match &mut self.active_script {
             None => Ok(Value::empty()),
             Some(script) => Ok(script
                 .vm
-                .execute(self.tick_hash, (jni_context,))
+                .execute(self.tick_hash, (jni_context, scriptables))
                 .map_err(RuneVmError)?
                 .complete()
                 .into_result()

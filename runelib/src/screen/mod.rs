@@ -86,7 +86,9 @@ pub trait ScreenRenderable<T> {
         font: &Font,
         paragraph_style: Option<ParagraphStyle>,
     ) -> Paragraph {
-        let paragraph_style = paragraph_style.unwrap_or_default();
+        let mut paragraph_style = paragraph_style.unwrap_or_default();
+        paragraph_style.set_replace_tab_characters(true);
+
         let mut paragraph_builder =
             ParagraphBuilder::new(&paragraph_style, context.font_collection);
 

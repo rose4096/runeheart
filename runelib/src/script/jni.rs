@@ -1,9 +1,12 @@
-use crate::script::context::RuneheartContext;
+use crate::example_block::jni::ExampleBlockRenderData;
+use crate::script::context::{RuneheartContext, RuneheartExecutionError};
 use crate::script::context::RuneheartExecutionError::NoActiveScript;
-use crate::script::rune_module::JNIBlockContext;
+use crate::script::rune_module::{JNIBlockContext, ScriptableBlockEntity};
+use ciborium::from_reader;
 use jni::JNIEnv;
-use jni::objects::{JClass, JObject, JString};
+use jni::objects::{JByteArray, JClass, JObject, JObjectArray, JString};
 use jni::sys::{jlong, jobject};
+use rune::runtime::VmError;
 
 #[allow(non_snake_case)]
 #[unsafe(no_mangle)]
@@ -42,10 +45,26 @@ pub extern "system" fn Java_rose_runeheart_Native_tick<'local>(
     _: JClass<'local>,
     context: jlong,
     object: JObject<'local>,
+    raw: JObjectArray,
+    scriptable: JByteArray<'local>,
 ) {
-    let context = RuneheartContext::from_handle_mut(context);
-    if let Err(err) = context.callback_tick(JNIBlockContext::new(&env, &object)) {
-        env.throw_new("java/lang/RuntimeException", format!("{:?}", err))
-            .expect("failed to throw runtime exception?");
+    // println!(
+    //     "{:?}",
+    //     from_reader::<Vec<ScriptableBlockEntity>, _>(
+    //         &()[..]
+    //     )
+    // );
+
+    if let Ok(bytes) = env.convert_byte_array(scriptable)
+        && let Ok(scriptables) = from_reader::<Vec<ScriptableBlockEntity>, _>(&bytes[..])
+    {
+        let context = RuneheartContext::from_handle_mut(context);
+        if let Err(err) =
+            context.callback_tick(JNIBlockContext::new(&env, &object, &raw), scriptables)
+        {
+            println!("{:?}", err);
+            // env.throw_new("java/lang/RuntimeException", format!("{:?}", err))
+            //     .expect("failed to throw runtime exception?");
+        }
     }
 }

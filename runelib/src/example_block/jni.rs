@@ -1,7 +1,6 @@
-use std::{fs, io};
 use crate::example_block::screen::ExampleBlockScreen;
 use crate::render::context::RenderContext;
-use crate::script::context::{RuneheartContext, SourceKind};
+use crate::script::context::{RuneheartContext, RuneheartResult, SourceKind};
 use ciborium::{from_reader, into_writer};
 use jni::JNIEnv;
 use jni::objects::{JByteArray, JClass, JObject};
@@ -9,6 +8,7 @@ use jni::sys::{jbyteArray, jfloat, jint, jlong};
 use serde::{Deserialize, Serialize};
 use skia_safe::wrapper::NativeTransmutableWrapper;
 use std::path::PathBuf;
+use std::{fs, io};
 
 #[derive(Serialize, Deserialize, Debug, Default, Clone, PartialEq)]
 pub struct UIScript {
@@ -26,18 +26,20 @@ pub struct ExampleBlockRenderData {
 
 impl ExampleBlockRenderData {
     pub fn collect_directory(&mut self) -> io::Result<()> {
-        self.scripts = fs::read_dir(&self.target_directory)?.filter_map(|file_path| {
-            let file_path = file_path.ok()?;
-            if file_path.path().extension()? == "rn" {
-                return Some(UIScript{
-                    file_name: file_path.file_name().to_string_lossy().to_string(),
-                    full_path: file_path.path(),
-                    content: fs::read_to_string(file_path.path()).ok()?,
-                });
-            }
+        self.scripts = fs::read_dir(&self.target_directory)?
+            .filter_map(|file_path| {
+                let file_path = file_path.ok()?;
+                if file_path.path().extension()? == "rn" {
+                    return Some(UIScript {
+                        file_name: file_path.file_name().to_string_lossy().to_string(),
+                        full_path: file_path.path(),
+                        content: fs::read_to_string(file_path.path()).ok()?,
+                    });
+                }
 
-            None
-        }).collect();
+                None
+            })
+            .collect();
 
         Ok(())
     }
@@ -72,7 +74,7 @@ pub extern "system" fn Java_rose_runeheart_Native_constructExampleBlockRenderDat
 #[allow(non_snake_case)]
 #[unsafe(no_mangle)]
 pub extern "system" fn Java_rose_runeheart_Native_updateScriptContextFromRenderData<'local>(
-    mut env: JNIEnv<'local>,
+    env: JNIEnv<'local>,
     _: JClass<'local>,
     context: jlong,
     render_data_bytes: JByteArray<'local>,
@@ -82,9 +84,14 @@ pub extern "system" fn Java_rose_runeheart_Native_updateScriptContextFromRenderD
     {
         let context = RuneheartContext::from_handle_mut(context);
         if let Some(script) = render_data.active_script {
-            context
-                .set_active_script(SourceKind::Content(script.content.clone()))
-                .unwrap();
+            match context.set_active_script(SourceKind::Content(script.content.clone())) {
+                Ok(ok) => {
+                    // println!("loaded script !")
+                }
+                Err(err) => {
+                    eprintln!("{:?}", err)
+                }
+            }
         }
     }
 }

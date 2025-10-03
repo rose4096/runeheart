@@ -26,6 +26,26 @@ the mod itself which currently just hosts runelib
 
 jni bindings for runeheart to execute/manage rune scripts
 
+## example script
+
+```rune
+pub fn tick(ctx, scriptables) {
+    let total_fuel = 0;
+	for scriptable in scriptables {
+		let items = scriptable.items;
+		for (i, item) in items.iter().enumerate() {
+			for tag in item.tags {
+				if tag == "minecraft:coals" {
+					total_fuel+=item.count;
+					break;
+				}
+			}
+		}
+	}
+    println!("{}",total_fuel)
+}
+```
+
 ## weird things
 
 if your bundled jdk includes an msvcp140.dll then the skia paragraph builder will crash the program on instantiation. i dont have a proper solution for this yet besides me just deleting it. lol (it works!)

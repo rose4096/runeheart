@@ -1,6 +1,7 @@
 package rose.runeheart.blockentity
 
 import kotlinx.serialization.ExperimentalSerializationApi
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import net.minecraft.core.BlockPos
 import net.minecraft.core.Direction
@@ -8,39 +9,61 @@ import net.minecraft.network.chat.Component
 import net.minecraft.world.MenuProvider
 import net.minecraft.world.entity.player.Inventory
 import net.minecraft.world.entity.player.Player
-import net.minecraft.world.inventory.AbstractContainerMenu
 import net.minecraft.world.inventory.ContainerLevelAccess
 import net.minecraft.world.level.Level
 import net.minecraft.world.level.block.entity.BlockEntity
 import net.minecraft.world.level.block.state.BlockState
 import net.neoforged.neoforge.capabilities.Capabilities
-import net.neoforged.neoforge.client.extensions.IMenuProviderExtension
 import rose.runeheart.Native
 import rose.runeheart.ScriptContext
 import rose.runeheart.menu.ExampleBlockMenu
 import kotlinx.serialization.cbor.Cbor
-import kotlinx.serialization.decodeFromByteArray
 import kotlinx.serialization.encodeToByteArray
-import rose.runeheart.Runeheart
+import net.minecraft.core.registries.BuiltInRegistries
+import net.minecraft.world.item.ItemStack
+import net.minecraft.world.item.Items
+import net.neoforged.neoforge.items.IItemHandler
+import kotlin.math.min
+
+// current ideas:
+// build jobject array, every script entity gets an index into its actual object
+// we have a raw index and then important script data within the entity itself
 
 @Serializable
-data class ExampleBlockRenderData(
-    val scripts: List<List<String>>
+data class ScriptableItem(
+    @SerialName("slot_index")
+    val slotIndex: Long,
+    val name: String,
+    val tags: List<String>,
+    val count: Int,
+)
+
+@Serializable
+data class ScriptableBlockEntity(
+    @SerialName("raw_access_index")
+    val rawAccessIndex: Long,
+    @Serializable(with = BlockPosSerializer::class)
+    @SerialName("block_pos")
+    val blockPos: BlockPos,
+    val dimension: String,
+    val name: String,
+    val items: List<ScriptableItem>
+)
+
+data class RawScriptableBlockEntity(
+    val blockEntity: BlockEntity,
 )
 
 @OptIn(ExperimentalSerializationApi::class)
-fun ExampleBlockRenderData.toBytes(): ByteArray = Cbor.encodeToByteArray(this)
-
-fun ByteArray.toExampleBlockRenderData(): ExampleBlockRenderData? =
-    runCatching { Cbor.decodeFromByteArray<ExampleBlockRenderData>(this) }
-        .onFailure { e -> Runeheart.LOGGER.error("CBOR decode failed", e) }
-        .getOrNull()
+fun List<ScriptableBlockEntity>.toBytes(): ByteArray = Cbor.encodeToByteArray(this)
 
 class ExampleBlockEntity(pos: BlockPos, state: BlockState) :
     BlockEntity(ModBlockEntity.EXAMPLE_BLOCK.get(), pos, state), MenuProvider {
 
     var scriptContext: ScriptContext? = null;
     var renderData: ByteArray? = null;
+    var rawScriptableEntities: List<RawScriptableBlockEntity> = listOf()
+    var scriptableEntities: List<ScriptableBlockEntity> = listOf()
 
     data class RelativeBlockEntity(val entity: BlockEntity?, val side: Direction)
 
@@ -48,6 +71,13 @@ class ExampleBlockEntity(pos: BlockPos, state: BlockState) :
         return Direction.entries.map {
             RelativeBlockEntity(level.getBlockEntity(relative.relative(it)), it)
         }
+    }
+
+    // MOVE API./. NEEDS TO SUPPORT SIDES.
+    // NEEDS TO SUPPORT FORGE TAGS TOO ON CHESTS MAYBE ??? omg
+
+    fun move_item(src: BlockEntity, dest: BlockEntity, amount: Int?) {
+
     }
 
     fun test_get_data(): Int = 420
@@ -64,22 +94,37 @@ class ExampleBlockEntity(pos: BlockPos, state: BlockState) :
                 Native.updateScriptContextFromRenderData(blockEntity.scriptContext!!.handle, blockEntity.renderData!!)
             }
 
-            val itemHandlers = blockEntity.getSurroundingBlockEntities(level, pos).mapNotNull {
-                if (it.entity == null) return@mapNotNull null
-
-                level.getCapability(
-                    Capabilities.ItemHandler.BLOCK,
-                    it.entity.blockPos,
-                    it.side.opposite
+            blockEntity.rawScriptableEntities = blockEntity.getSurroundingBlockEntities(level, pos)
+                .mapNotNull { it.entity?.let { it1 -> RawScriptableBlockEntity(it1) } }
+            blockEntity.scriptableEntities = blockEntity.rawScriptableEntities.mapIndexed { i, it ->
+                ScriptableBlockEntity(
+                    i.toLong(),
+                    it.blockEntity.blockPos,
+                    it.blockEntity.level!!.dimension().location().toString(),
+                    BuiltInRegistries.BLOCK_ENTITY_TYPE.getKey(it.blockEntity.type).toString(),
+                    level.getCapability(Capabilities.ItemHandler.BLOCK, it.blockEntity.blockPos, null)?.let {
+                        (0..<it.slots).map { i ->
+                            val stack = it.getStackInSlot(i);
+                            ScriptableItem(
+                                i.toLong(),
+                                BuiltInRegistries.ITEM.getKey(stack.item).toString(),
+                                BuiltInRegistries.ITEM.getHolder(BuiltInRegistries.ITEM.getKey(stack.item))
+                                    .orElseThrow()
+                                    .tags().toList().map { item -> item.location().toString() },
+                                stack.count
+                            )
+                        }
+                    } ?: listOf()
                 )
             }
 
-//            itemHandlers.forEach {
-//                it.insertItem()
-//            }
-
             blockEntity.scriptContext?.let {
-                Native.tick(it.handle, blockEntity);
+                Native.tick(
+                    it.handle,
+                    blockEntity,
+                    blockEntity.rawScriptableEntities.toTypedArray(),
+                    blockEntity.scriptableEntities.toBytes()
+                );
             }
         }
     }

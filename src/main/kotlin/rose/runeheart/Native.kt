@@ -3,6 +3,7 @@ package rose.runeheart
 import net.minecraft.world.level.block.entity.BlockEntity
 import rose.runeheart.Runeheart.LOGGER
 import rose.runeheart.blockentity.ExampleBlockEntity
+import rose.runeheart.blockentity.RawScriptableBlockEntity
 import java.io.File
 import java.nio.ByteBuffer
 
@@ -41,7 +42,7 @@ object Native {
     external fun deleteContext(context: NativeContextHandle)
 
     @JvmStatic
-    external fun tick(context: NativeContextHandle, obj: BlockEntity)
+    external fun tick(context: NativeContextHandle, obj: BlockEntity, raw: Array<RawScriptableBlockEntity>, scriptable: ByteArray)
 
     @JvmStatic
     external fun constructExampleBlockRenderData(context: NativeContextHandle): ByteArray
