@@ -6,6 +6,7 @@ use ciborium::from_reader;
 use jni::JNIEnv;
 use jni::objects::{JByteArray, JClass, JObject, JObjectArray, JString};
 use jni::sys::{jlong, jobject};
+use rune::alloc::iter::TryFromIterator;
 use rune::runtime::VmError;
 
 #[allow(non_snake_case)]

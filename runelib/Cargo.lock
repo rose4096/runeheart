@@ -1361,9 +1361,8 @@ dependencies = [
 
 [[package]]
 name = "rune"
-version = "0.14.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bcf368477746821a6012682df3b7edde0844053819d2f798bb4d96f6c951ab7b"
+version = "0.14.1"
+source = "git+https://github.com/rose4096/rune.git?branch=0.14.x#bc57faf8b3f0a9ad1309df8ea067108d7b77fc1c"
 dependencies = [
  "anyhow",
  "codespan-reporting",
@@ -1387,9 +1386,8 @@ dependencies = [
 
 [[package]]
 name = "rune-alloc"
-version = "0.14.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fe726c4e1f60fbdac2f03d833d0b743ccad31297f4d2d38cf8d6508df7c7829c"
+version = "0.14.1"
+source = "git+https://github.com/rose4096/rune.git?branch=0.14.x#bc57faf8b3f0a9ad1309df8ea067108d7b77fc1c"
 dependencies = [
  "ahash",
  "pin-project",
@@ -1399,9 +1397,8 @@ dependencies = [
 
 [[package]]
 name = "rune-alloc-macros"
-version = "0.14.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "81dd3610790de381e5a1452c90ebabf85d5567c0187583c30fca351af8871e06"
+version = "0.14.1"
+source = "git+https://github.com/rose4096/rune.git?branch=0.14.x#bc57faf8b3f0a9ad1309df8ea067108d7b77fc1c"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -1410,9 +1407,8 @@ dependencies = [
 
 [[package]]
 name = "rune-core"
-version = "0.14.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8383788fd0a290e28219167f5d51cacc0cc8292a55a8e0afb89bca89d7286484"
+version = "0.14.1"
+source = "git+https://github.com/rose4096/rune.git?branch=0.14.x#bc57faf8b3f0a9ad1309df8ea067108d7b77fc1c"
 dependencies = [
  "musli",
  "rune-alloc",
@@ -1422,9 +1418,8 @@ dependencies = [
 
 [[package]]
 name = "rune-macros"
-version = "0.14.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "848ebe26cf7595e7934853c0a604548282d55d6ac511a1e892b3fac12f3979b4"
+version = "0.14.1"
+source = "git+https://github.com/rose4096/rune.git?branch=0.14.x#bc57faf8b3f0a9ad1309df8ea067108d7b77fc1c"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -1434,9 +1429,8 @@ dependencies = [
 
 [[package]]
 name = "rune-modules"
-version = "0.14.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8e1fe63c510380e3a1b7e5f2a416001e74d38d6fa040a080a7a7c2f2a1f465ba"
+version = "0.14.1"
+source = "git+https://github.com/rose4096/rune.git?branch=0.14.x#bc57faf8b3f0a9ad1309df8ea067108d7b77fc1c"
 dependencies = [
  "base64",
  "nanorand",
@@ -1449,18 +1443,16 @@ dependencies = [
 
 [[package]]
 name = "rune-tracing"
-version = "0.14.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0f989e6dbe1182c4f04500d38f3191460eb4a8a9710f5c8a98ee31951afce2db"
+version = "0.14.1"
+source = "git+https://github.com/rose4096/rune.git?branch=0.14.x#bc57faf8b3f0a9ad1309df8ea067108d7b77fc1c"
 dependencies = [
  "rune-tracing-macros",
 ]
 
 [[package]]
 name = "rune-tracing-macros"
-version = "0.14.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0b948165587fbbc114d861d83f3a4361ad223f3e3e613316c1fe6f5fd867e134"
+version = "0.14.1"
+source = "git+https://github.com/rose4096/rune.git?branch=0.14.x#bc57faf8b3f0a9ad1309df8ea067108d7b77fc1c"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -1671,9 +1663,9 @@ checksum = "e3a9fe34e3e7a50316060351f37187a3f546bce95496156754b601a5fa71b76e"
 
 [[package]]
 name = "skia-bindings"
-version = "0.88.0"
+version = "0.89.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f569a07840009ed9e65a70e111b51485eeea8e44b4e84bc0cf698b18ca494662"
+checksum = "1894d748f960fa1647bbf3660934047b7239e533df10af380b2a439ba17c2a07"
 dependencies = [
  "bindgen",
  "cc",
@@ -1688,9 +1680,9 @@ dependencies = [
 
 [[package]]
 name = "skia-safe"
-version = "0.88.0"
+version = "0.89.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f488bd4ff0179b10e2a8e55b93707458ff37c5110458bf00a27518b957252074"
+checksum = "b093786d5f5438ac14379141e78198d9f7d963cb4916b9ea88021856290e2979"
 dependencies = [
  "bitflags 2.9.3",
  "skia-bindings",

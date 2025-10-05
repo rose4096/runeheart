@@ -1,10 +1,10 @@
 use jni::JNIEnv;
 use jni::objects::{AsJArrayRaw, JByteArray, JObject, JObjectArray, JString, JValue, ReleaseMode};
-use jni::signature::JavaType;
-use jni::sys::{jobject, jsize};
+use jni::signature::{JavaType, ReturnType};
+use jni::sys::{jint, jobject, jsize};
 use rune::alloc::clone::TryClone;
 use rune::alloc::fmt::TryWrite;
-use rune::runtime::{Formatter, VmResult};
+use rune::runtime::{Args, Formatter, VmResult};
 use rune::{Any, ContextError, Module, Value, vm_write};
 use serde::{Deserialize, Serialize};
 use std::ptr::NonNull;
@@ -19,12 +19,13 @@ pub fn module(_stdio: bool) -> Result<Module, ContextError> {
     m.function_meta(Error::debug_fmt)?;
     m.ty::<BlockEntityTarget>()?;
 
-    m.ty::<JNIBlockContext>()?;
-    m.function_meta(JNIBlockContext::fill_with_diamonds)?;
-
+    m.ty::<Direction>()?;
     m.ty::<ScriptableItem>()?;
-
     m.ty::<ScriptableBlockEntity>()?;
+    m.ty::<JNIBlockContext>()?;
+
+    m.function_meta(JNIBlockContext::move_item)?;
+
     m.function_meta(ScriptableBlockEntity::display_fmt)?;
     m.function_meta(ScriptableBlockEntity::debug_fmt)?;
 
@@ -73,6 +74,37 @@ pub struct ScriptableBlockEntity {
     pub name: String,
     #[rune(get)]
     pub items: rune::alloc::Vec<ScriptableItem>,
+}
+
+#[derive(Any)]
+#[rune(item = ::rune)]
+#[derive(PartialEq, Debug, TryClone)]
+pub enum Direction {
+    #[rune(constructor)]
+    Down,
+    #[rune(constructor)]
+    Up,
+    #[rune(constructor)]
+    North,
+    #[rune(constructor)]
+    South,
+    #[rune(constructor)]
+    West,
+    #[rune(constructor)]
+    East,
+}
+
+impl Direction {
+    fn to_str(&self) -> &str {
+        match self {
+            Direction::Down => "DOWN",
+            Direction::Up => "UP",
+            Direction::North => "NORTH",
+            Direction::South => "SOUTH",
+            Direction::West => "WEST",
+            Direction::East => "EAST",
+        }
+    }
 }
 
 impl ScriptableBlockEntity {
@@ -135,12 +167,36 @@ impl JNIBlockContext {
         &self,
         src: &ScriptableBlockEntity,
         dst: &ScriptableBlockEntity,
+        item: &ScriptableItem,
+        face: Direction,
         amount: Option<i32>,
     ) -> Option<()> {
         let mut env = self.env();
 
-        let src_raw = self.get_raw_scriptable_entity(src.raw_access_index);
-        let dst_raw = self.get_raw_scriptable_entity(dst.raw_access_index);
+        let src_raw = self.get_raw_scriptable_entity(src.raw_access_index)?;
+        let dst_raw = self.get_raw_scriptable_entity(dst.raw_access_index)?;
+
+        let dir_cls = env.find_class("net/minecraft/core/Direction").ok()?;
+        let face = env
+            .get_static_field(dir_cls, face.to_str(), "Lnet/minecraft/core/Direction;")
+            .ok()?
+            .l()
+            .ok()?;
+
+        let amount = if let Some(amount) = amount {
+            env.new_object("java/lang/Integer", "(I)V", &[JValue::Int(amount as jint)])
+                .ok()?
+        } else {
+            JObject::null()
+        };
+
+        env.call_method(
+            self.block_entity(),
+            "moveItem",
+            "(Lrose/runeheart/blockentity/RawScriptableBlockEntity;Lrose/runeheart/blockentity/RawScriptableBlockEntity;ILnet/minecraft/core/Direction;Ljava/lang/Integer;)V",
+            &[JValue::Object(&src_raw),JValue::Object(&dst_raw), JValue::Int(item.slot_index as jint), JValue::Object(&face), JValue::Object(&amount)],
+        )
+        .ok()?;
 
         Some(())
     }
